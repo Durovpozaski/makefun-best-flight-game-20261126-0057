@@ -1,6 +1,7 @@
 // propulsionFuel.js — fuel burn, endurance vs headwind, CHT / oil temperature.
 // Throttle economy is a real decision: burn too much and the diversion
-// to Isola Bianca becomes the only way home.
+// to Isola Bianca becomes the only way home. Ram air cools the heads:
+// the faster the airflow, the quicker CHT and oil shed heat.
 import { clamp } from './config.js';
 
 export function createFuelSystem(spec, fuelGal) {
@@ -29,11 +30,12 @@ export function stepFuel(F, S, dt, weather) {
   F.rangeNm = F.fuelGal * nmPerGal;
   F.lowFuel = F.fuelGal < spec.fuelGal * 0.18;
   F.reserveWarn = F.enduranceMin < 13 && F.enduranceMin > 0;
-  // engine temperatures: over-throttle cooks the heads
+  // engine temperatures: over-throttle cooks the heads; ram air sheds the heat
+  const airflow = 1 + S.airspeedKt / 120;
   for (let i = 0; i < spec.engines; i++) {
     const target = 150 + S.throttle * 130 + (S.throttle > 0.9 ? 55 : 0) - S.airspeedKt * 0.25;
-    F.chtC[i] += clamp(target - F.chtC[i], -dt * 4, dt * 3);
-    F.oilC[i] += clamp((88 + S.throttle * 30) - F.oilC[i], -dt * 2, dt * 1.5);
+    F.chtC[i] += clamp(target - F.chtC[i], -dt * 4 * airflow, dt * 3);
+    F.oilC[i] += clamp((88 + S.throttle * 30) - F.oilC[i], -dt * 2 * airflow, dt * 1.5);
     F.rpm[i] = Math.round(600 + S.throttle * 1900 + (S.airspeedKt > 60 ? 60 : 0));
   }
   F.overheat = F.chtC.some((c) => c > 245);
