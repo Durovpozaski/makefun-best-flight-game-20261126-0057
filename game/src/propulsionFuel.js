@@ -33,7 +33,9 @@ export function stepFuel(F, S, dt, weather) {
   // engine temperatures: over-throttle cooks the heads; ram air sheds the heat
   const airflow = 1 + S.airspeedKt / 120;
   for (let i = 0; i < spec.engines; i++) {
-    const target = 150 + S.throttle * 130 + (S.throttle > 0.9 ? 55 : 0) - S.airspeedKt * 0.25;
+    // cylinder heads cannot exceed ~280C even at full throttle with no
+    // airflow: a physical bound, so a ground run never cooks past it.
+    const target = Math.min(280, 150 + S.throttle * 130 + (S.throttle > 0.9 ? 55 : 0) - S.airspeedKt * 0.25);
     F.chtC[i] += clamp(target - F.chtC[i], -dt * 4 * airflow, dt * 3);
     F.oilC[i] += clamp((88 + S.throttle * 30) - F.oilC[i], -dt * 2 * airflow, dt * 1.5);
     F.rpm[i] = Math.round(600 + S.throttle * 1900 + (S.airspeedKt > 60 ? 60 : 0));
