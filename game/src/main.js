@@ -319,7 +319,7 @@ function frame(timeMs) {
   water.update(dt, time);
   clouds.update(dt, time, weather);
   rain.update(dt, S ? S.pos : new THREE.Vector3(0, 100, 0), weather);
-  lightning.update(dt, time, weather, S ? S.pos : null, () => audio.thunder());
+  lightning.update(dt, time, weather, S ? S.pos : null, () => audio.thunder(), S ? S.headingDeg : 0);
   if (flashLevel > 0) {
     flashLevel = Math.max(0, flashLevel - dt * 1.4);
     const flashEl = document.getElementById('flash');

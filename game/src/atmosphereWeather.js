@@ -171,10 +171,10 @@ export function buildLightning(scene) {
     g.stroke();
   };
   g.clearRect(0, 0, 128, 512);
-  trace('rgba(190,220,255,0.9)', 10, 18);
-  trace('rgba(255,255,255,0.95)', 3.5, 8);
+  trace('rgba(190,220,255,0.95)', 20, 26);
+  trace('rgba(255,255,255,1.0)', 8, 12);
   const tex = new THREE.CanvasTexture(c);
-  const boltGeo = new THREE.PlaneGeometry(90, 900);
+  const boltGeo = new THREE.PlaneGeometry(150, 900);
   const boltMat = new THREE.MeshBasicMaterial({
     map: tex, transparent: true, opacity: 0,
     blending: THREE.AdditiveBlending, depthWrite: false,
@@ -198,7 +198,7 @@ export function buildLightning(scene) {
   return {
     group,
     get strikes() { return strikes; },
-    update(dt, time, weather, aircraftPos, onThunder) {
+    update(dt, time, weather, aircraftPos, onThunder, headingDeg) {
       if (!weather.storm || !aircraftPos) {
         group.visible = false;
         flashLight.intensity = 0;
@@ -206,14 +206,18 @@ export function buildLightning(scene) {
       }
       nextIn -= dt;
       if (nextIn <= 0) {
-        const ang = Math.random() * Math.PI * 2;
-        const dist = 500 + Math.random() * 1100;
-        const sx = aircraftPos.x + Math.cos(ang) * dist;
-        const sz = aircraftPos.z + Math.sin(ang) * dist;
+        // Bolt lands in the forward hemisphere the pilot is looking at
+        // (+-55 deg around the nose), 350-800 m out, so a strike is
+        // visible from the chase/cockpit camera instead of behind it.
+        const hdg = (typeof headingDeg === 'number' ? headingDeg : 0) * Math.PI / 180;
+        const ang = hdg + (Math.random() - 0.5) * 1.92;
+        const dist = 350 + Math.random() * 450;
+        const sx = aircraftPos.x + Math.sin(ang) * dist;
+        const sz = aircraftPos.z - Math.cos(ang) * dist;
         group.position.set(sx, 560, sz);
         group.rotation.y = Math.random() * Math.PI;
         group.visible = true;
-        boltT = 0.22;
+        boltT = 0.35;
         flash = 1;
         flashLight.position.set(sx, 900, sz);
         thunderAt = time + 0.35 + Math.random() * 0.5;
@@ -224,7 +228,7 @@ export function buildLightning(scene) {
         boltT -= dt;
         // double-stroke flicker: bright, dip, bright again, then gone
         const on = boltT > 0.14 || (boltT > 0.06 && boltT < 0.1);
-        const op = on ? 0.95 : 0.15;
+        const op = on ? 1.0 : 0.5;
         boltMat.opacity = op;
         boltB.material.opacity = op;
         if (boltT <= 0) { group.visible = false; boltMat.opacity = 0; boltB.material.opacity = 0; }
