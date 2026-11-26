@@ -282,11 +282,11 @@ export function buildLightning(scene) {
       }
       nextIn -= dt;
       if (nextIn <= 0) {
-        // Bolt lands in the forward hemisphere the pilot is looking at
-        // (+-55 deg around the nose), 350-800 m out, so a strike is
+        // Bolt lands in the forward cone the pilot is looking at
+        // (+-30 deg around the nose), 350-800 m out, so a strike is
         // visible from the chase/cockpit camera instead of behind it.
         const hdg = (typeof headingDeg === 'number' ? headingDeg : 0) * Math.PI / 180;
-        const ang = hdg + (Math.random() - 0.5) * 1.92;
+        const ang = hdg + (Math.random() - 0.5) * 1.05;
         const dist = 350 + Math.random() * 450;
         const sx = aircraftPos.x + Math.sin(ang) * dist;
         const sz = aircraftPos.z - Math.cos(ang) * dist;
