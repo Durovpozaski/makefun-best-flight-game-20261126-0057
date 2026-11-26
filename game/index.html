@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MISTRAL WINGS — 6-DOF Adriatic Coast &amp; Harbor Flight Sim</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1a1410;
+    font-family: "Segoe UI", system-ui, sans-serif; color: #e8f2ff; }
+  #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+  /* ---- collimated HUD: thin strokes, translucent dark chips, never a white box ---- */
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 5;
+    text-shadow: 0 1px 3px rgba(0,0,0,.85); }
+  .tape { position: absolute; top: 50%; transform: translateY(-50%); width: 74px;
+    background: rgba(8,16,22,.55); border: 1px solid rgba(126,226,160,.45); border-radius: 4px;
+    padding: 6px 8px; font-size: 15px; }
+  .tape .lbl { font-size: 10px; letter-spacing: 2px; color: #7ee2a0; }
+  .tape .val { font-size: 26px; font-weight: 700; }
+  .tape .unit { font-size: 11px; color: #bcd; }
+  #tape-speed { left: 14px; text-align: right; }
+  #tape-alt { right: 14px; text-align: left; }
+  #hud-hdg-bar { position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(8,16,22,.55); border: 1px solid rgba(126,226,160,.45); border-radius: 4px;
+    padding: 5px 14px; font-size: 15px; letter-spacing: 1px; }
+  #hud-hdg-bar b { font-size: 24px; color: #ffd24a; }
+  #hud-vsi-box { position: absolute; top: 64px; right: 14px; font-size: 13px;
+    background: rgba(8,16,22,.55); border: 1px solid rgba(126,226,160,.35); border-radius: 4px; padding: 4px 8px; }
+  #hud-sortie-bar { position: absolute; top: 12px; left: 14px; max-width: 430px; font-size: 13px; }
+  #hud-sortie-bar .sname { color: #ffd24a; font-weight: 700; letter-spacing: 1px; }
+  #hud-objective { color: #cfe8d8; margin-top: 2px; }
+  #hud-warnings { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); text-align: center; }
+  .warn { color: #ff6a55; font-weight: 700; font-size: 15px; letter-spacing: 1px;
+    background: rgba(40,8,4,.55); border: 1px solid rgba(255,106,85,.6); border-radius: 4px;
+    padding: 3px 12px; margin-top: 4px; }
+  #hud-bottom { position: absolute; left: 14px; bottom: 12px; display: flex; gap: 8px; align-items: flex-end; }
+  .chip { background: rgba(8,16,22,.55); border: 1px solid rgba(126,226,160,.35); border-radius: 4px;
+    padding: 5px 9px; font-size: 13px; line-height: 1.5; }
+  .chip .lbl { font-size: 10px; letter-spacing: 1px; color: #7ee2a0; }
+  #minimap { width: 190px; height: 150px; border: 1px solid rgba(126,226,160,.5); border-radius: 4px; }
+  #hud-ils-box { position: absolute; right: 14px; bottom: 168px; text-align: right; font-size: 13px;
+    background: rgba(8,16,22,.55); border: 1px solid rgba(126,226,160,.35); border-radius: 4px; padding: 5px 9px; }
+  #hud-loc, #hud-gs { position: absolute; width: 14px; height: 14px; background: #ffd24a;
+    transform: translate(-50%,-50%) rotate(45deg); display: none; box-shadow: 0 0 8px #ffd24a; }
+  #hud-vv { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+    border: 2px solid #7ee2a0; border-radius: 50%; opacity: .85; }
+  #hud-vv::after { content: ""; position: absolute; left: 50%; top: 18px; width: 2px; height: 10px;
+    background: #7ee2a0; margin-left: -1px; }
+  /* ---- menu / hangar ---- */
+  .overlay { position: fixed; inset: 0; z-index: 10; display: none; overflow-y: auto;
+    background: linear-gradient(180deg, rgba(10,14,22,.82), rgba(10,14,22,.68)); }
+  .panel { max-width: 860px; margin: 4vh auto; padding: 26px 30px; background: rgba(12,20,26,.88);
+    border: 1px solid #c98a2e; border-radius: 10px; }
+  .panel h1 { margin: 0; font-size: 40px; letter-spacing: 3px; color: #ffd24a; }
+  .panel h2 { margin: 4px 0 14px; font-size: 15px; letter-spacing: 2px; color: #7ee2a0; font-weight: 400; }
+  .panel label { display: block; margin: 12px 0 4px; font-size: 12px; letter-spacing: 2px; color: #9fc4d8; }
+  .panel select, .panel input[type=range] { width: 100%; }
+  .panel select { background: #16222c; color: #e8f2ff; border: 1px solid #3a5a6a; padding: 9px; font-size: 15px; border-radius: 4px; }
+  .btn { display: inline-block; margin-top: 18px; padding: 12px 34px; font-size: 17px; font-weight: 700;
+    letter-spacing: 2px; color: #10141a; background: #ffd24a; border: 0; border-radius: 6px; cursor: pointer; }
+  .btn.ghost { background: transparent; color: #ffd24a; border: 1px solid #ffd24a; margin-left: 10px; }
+  .btn:hover { filter: brightness(1.1); }
+  .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 22px; font-size: 13px; color: #cfe8d8; margin-top: 10px; }
+  .controls-grid b { color: #ffd24a; font-family: ui-monospace, monospace; }
+  #hangar { position: fixed; right: 18px; top: 18px; width: 430px; max-height: 92vh; overflow-y: auto;
+    z-index: 11; display: none; background: rgba(12,20,26,.92); border: 1px solid #c98a2e;
+    border-radius: 10px; padding: 16px 18px; font-size: 13px; }
+  #hangar h3 { margin: 0 0 8px; color: #ffd24a; letter-spacing: 2px; font-size: 15px; }
+  #hangar svg { width: 100%; height: auto; background: #0a1410; border: 1px solid #1d5a3a; border-radius: 4px; }
+  #hangar .sortie-list { margin: 10px 0; line-height: 1.7; color: #cfe8d8; }
+  #hangar .debrief-card { border: 1px solid #7ee2a0; border-radius: 6px; padding: 10px; margin-top: 10px; }
+  #hangar .debrief-card b { color: #7ee2a0; }
+  #debrief { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 12;
+    display: none; width: 560px; max-width: 92vw; background: rgba(10,18,24,.94);
+    border: 1px solid #7ee2a0; border-radius: 10px; padding: 22px 26px; }
+  .panel-title { font-size: 17px; letter-spacing: 2px; color: #7ee2a0; font-weight: 700; }
+  .debrief-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 16px 0; }
+  .debrief-grid span { display: block; font-size: 11px; letter-spacing: 1px; color: #9fc4d8; }
+  .debrief-grid b { font-size: 19px; }
+  .debrief-grade { font-size: 22px; font-weight: 800; color: #ffd24a; letter-spacing: 1px; }
+  .debrief-hint { margin-top: 12px; font-size: 13px; color: #cfe8d8; }
+  .incident-reason { margin: 14px 0; font-size: 16px; color: #ffb0a0; line-height: 1.5; }
+  #help { position: fixed; left: 50%; top: 12%; transform: translateX(-50%); z-index: 13; display: none;
+    background: rgba(10,18,24,.95); border: 1px solid #c98a2e; border-radius: 8px; padding: 18px 24px;
+    font-size: 14px; line-height: 1.8; }
+  @media (max-width: 760px) { .panel h1 { font-size: 26px; } #hangar { width: 92vw; right: 4vw; } }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<canvas id="game" aria-label="Mistral Wings: 6-DOF Adriatic flight simulator"></canvas>
+<p id="status" role="status" aria-live="polite"></p>
+
+<div id="hud">
+  <div id="hud-vv"></div>
+  <div id="hud-loc"></div>
+  <div id="hud-gs"></div>
+  <div id="tape-speed" class="tape mono"><div class="lbl">KIAS</div><div class="val" id="hud-ias">000</div><div class="unit">KT · <span id="hud-rpm">0</span> RPM</div></div>
+  <div id="tape-alt" class="tape mono"><div class="lbl">ALTITUDE</div><div class="val" id="hud-alt">00000</div><div class="unit">FT · BARO 1014</div></div>
+  <div id="hud-hdg-bar" class="mono">HDG <b id="hud-hdg">090</b>° &nbsp;·&nbsp; VSI <span id="hud-vsi">+0</span> FPM</div>
+  <div id="hud-vsi-box" class="mono">WIND <span id="hud-wind">120°/12KT</span><br><span id="hud-stab">STAB ON</span></div>
+  <div id="hud-sortie-bar"><div class="sname" id="hud-sortie">SORTIE 1</div><div id="hud-objective"></div></div>
+  <div id="hud-warnings"></div>
+  <div id="hud-bottom">
+    <canvas id="minimap" width="190" height="150"></canvas>
+    <div class="chip mono"><div class="lbl">TRIM / FLAPS / GEAR</div><span id="hud-trim">+0.0</span> · <span id="hud-flaps">0°</span> · <span id="hud-gear">DOWN</span></div>
+    <div class="chip mono"><div class="lbl">FUEL · ENDURANCE</div><span id="hud-fuel">110 GAL</span> · <span id="hud-endurance">—</span></div>
+    <div class="chip mono"><div class="lbl">CHT · AIRFRAME</div><span id="hud-cht">150°C</span> · <span id="hud-damage">AIRFRAME 100%</span></div>
+  </div>
+  <div id="hud-ils-box" class="mono"><div id="hud-ils">ILS 09 · OUT OF RANGE</div><div id="hud-papi">PAPI —</div></div>
+</div>
+
+<div id="menu" class="overlay">
+  <div class="panel">
+    <h1>MISTRAL WINGS</h1>
+    <h2>6-DOF ADRIATIC COAST &amp; HARBOR FLIGHT SIM · MC-18 “ALBATRO” · I-MIST</h2>
+    <label for="sel-aircraft">AIRCRAFT</label>
+    <select id="sel-aircraft">
+      <option value="albatro">MC-18 “ALBATRO” — twin-engine amphibious commuter</option>
+      <option value="libeccio">SR-4 “LIBECCIO” — single-prop touring &amp; aerobatic</option>
+      <option value="sirocco">LJ-22 “SIROCCO” — twin-engine coastal patrol jet</option>
+    </select>
+    <label for="sel-sortie">SORTIE</label>
+    <select id="sel-sortie"></select>
+    <label for="fuel-slider">FUEL LOADOUT — <span id="fuel-value">110 GAL</span> (weight &amp; range)</label>
+    <input type="range" id="fuel-slider" min="20" max="240" value="110">
+    <div>
+      <button class="btn" id="btn-fly">FLY ▸</button>
+      <button class="btn ghost" id="btn-hangar">SECTIONAL MAP &amp; HANGAR</button>
+    </div>
+    <div class="controls-grid" id="controls-list"></div>
+  </div>
+</div>
+
+<div id="hangar">
+  <h3>SECTIONAL MAP — ADRIATIC 12 × 12 KM</h3>
+  <svg viewBox="0 0 400 300" role="img" aria-label="Sectional aviation map of the Adriatic coast">
+    <rect x="0" y="0" width="400" height="300" fill="#0a1410"/>
+    <path d="M250,0 C230,60 270,120 245,180 C230,230 260,270 245,300" stroke="#3fd4c0" stroke-width="3" fill="none"/>
+    <path d="M60,40 L140,90 L110,190 L40,150 Z" stroke="#c98a2e" stroke-width="1.5" fill="none"/>
+    <text x="70" y="120" fill="#c98a2e" font-size="11">MONTE CORVO 2040 FT</text>
+    <circle cx="150" cy="150" r="5" fill="#ffd24a"/><text x="160" y="154" fill="#e8f2ff" font-size="11">BELLAVISTA 09/27 ILS</text>
+    <circle cx="330" cy="70" r="5" fill="#7ee2a0"/><text x="300" y="60" fill="#e8f2ff" font-size="11">ISOLA BIANCA 14</text>
+    <circle cx="315" cy="225" r="5" fill="#7ee2a0"/><text x="290" y="245" fill="#e8f2ff" font-size="11">CALA MARINA 32W</text>
+    <circle cx="80" cy="240" r="5" fill="#7ee2a0"/><text x="90" y="244" fill="#e8f2ff" font-size="11">CORVO 21</text>
+    <circle cx="360" cy="265" r="4" fill="#ff6a55"/><text x="330" y="285" fill="#e8f2ff" font-size="11">FARO STN</text>
+    <line x1="150" y1="150" x2="330" y2="70" stroke="#ffd24a" stroke-width="1" stroke-dasharray="5 4"/>
+    <line x1="150" y1="150" x2="315" y2="225" stroke="#ffd24a" stroke-width="1" stroke-dasharray="5 4"/>
+    <line x1="150" y1="150" x2="80" y2="240" stroke="#ffd24a" stroke-width="1" stroke-dasharray="5 4"/>
+    <text x="12" y="290" fill="#7ee2a0" font-size="10">VFR SECTIONAL · CONTOURS · AIRWAYS · BARO 1014 HPA</text>
+  </svg>
+  <div class="sortie-list">
+    1 Bellavista Coastal Checkride · 2 Cala Marina Seaplane Shuttle · 3 Isola Bianca Cliffside Cargo ·
+    4 Mistral 24 KT Crosswind · 5 Low-Ceiling ILS Recovery · 6 Engine #2 Overheat &amp; Fuel Diversion ·
+    7 Monte Corvo Ridge Medevac · 8 Adriatic Dusk Grand Circuit
+  </div>
+  <div class="debrief-card">
+    <b>LAST LANDING TELEMETRY</b><br>
+    TOUCHDOWN -138 FPM · CENTERLINE 0.6 M · CRAB 1.2° · 86 KT<br>
+    <b>PRECISION LANDING · 96/100</b>
+  </div>
+</div>
+
+<div id="debrief"></div>
+<div id="help"></div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
