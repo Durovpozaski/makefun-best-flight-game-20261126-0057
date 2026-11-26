@@ -6,7 +6,7 @@ import { WORLD, AIRCRAFT_SPECS, FLIGHT, clamp, degToRad, ktToMs } from './config
 import * as Textures from './proceduralTextures.js';
 import { buildTerrain, terrainHeight, isWater } from './terrainAdriatic.js';
 import { buildWater } from './waterShader.js';
-import { createWeather, buildSky, buildClouds, buildRain, windVectorAt } from './atmosphereWeather.js';
+import { createWeather, buildSky, buildClouds, buildRain, buildLightning, windVectorAt } from './atmosphereWeather.js';
 import { buildCity, buildLighthouse } from './harborAndCity.js';
 import { buildAirfields, buildSeaplaneBasin } from './airfieldsAndSeaplane.js';
 import { buildTraffic, buildShips } from './trafficAndShips.js';
@@ -45,11 +45,12 @@ const textures = {
 };
 
 const weather = createWeather();
-buildSky(scene, renderer);
+const skyLights = buildSky(scene, renderer);
 buildTerrain(scene, textures);
 const water = buildWater(scene);
 const clouds = buildClouds(scene);
 const rain = buildRain(scene);
+const lightning = buildLightning(scene);
 buildCity(scene, textures);
 const lighthouse = buildLighthouse(scene);
 const airfields = buildAirfields(scene, textures);
@@ -74,8 +75,15 @@ let paused = false;
 let hangarMode = false;
 let debriefShown = false;
 let crashSmoke = null;
+let crashFire = null;
+let crashDebris = null;
+let flashLevel = 0;
+let frameCount = 0;
 let lastStallHorn = 0;
 let elapsed = 0;
+// diagnostics handle for headless verification (frame counter, audio state,
+// live weather/airfields). Harmless in the shipped game.
+window.__mistral = { audio, weather, airfields, lightning, get S() { return S; } };
 
 function quatFromHdgPitchRoll(hdgDeg, pitchDeg, rollDeg) {
   return new THREE.Quaternion().setFromEuler(new THREE.Euler(
@@ -126,6 +134,12 @@ function resetFlight(sortieId, type, fuelGal, startOverride) {
   debriefShown = false;
   hideDebrief();
   if (crashSmoke) { scene.remove(crashSmoke); crashSmoke = null; }
+  if (crashFire) { scene.remove(crashFire); crashFire = null; }
+  if (crashDebris) { scene.remove(crashDebris.points); crashDebris = null; }
+  flashLevel = 0;
+  const flashEl0 = document.getElementById('flash');
+  if (flashEl0) flashEl0.style.opacity = '0';
+  rig.shake = 0;
   const fwd0 = new THREE.Vector3(0, 0, 1).applyQuaternion(S.quat);
   const up0 = new THREE.Vector3(0, 1, 0).applyQuaternion(S.quat);
   rig.chasePos.copy(S.pos).addScaledVector(fwd0, -17).addScaledVector(up0, 4.4);
@@ -206,21 +220,56 @@ function triggerCrash(reason) {
   if (mode === 'crash') return;
   mode = 'crash';
   S.crashed = true; S.crashReason = reason;
-  // debris + smoke burst at the wreck
-  const geo = new THREE.BufferGeometry();
-  const n = 260;
+  rig.shake = 1;
+  // screen flash: full-screen warm flash, faded out by the frame loop
+  flashLevel = 1;
+  const flashEl = document.getElementById('flash');
+  if (flashEl) flashEl.style.opacity = '0.85';
+  // fireball: orange point light that flares, then dies over ~2 s
+  crashFire = new THREE.PointLight(0xff7711, 260, 500, 1.6);
+  crashFire.position.copy(S.pos);
+  scene.add(crashFire);
+  // debris: fragments with random outward velocity + gravity, updated every
+  // frame in crash mode; orange/grey/red mix
+  const n = 170;
   const pos = new Float32Array(n * 3);
+  const col = new Float32Array(n * 3);
+  const vel = new Float32Array(n * 3);
+  const cA = new THREE.Color(0xffa040), cB = new THREE.Color(0x3a3a38), cC = new THREE.Color(0xff5518);
   for (let i = 0; i < n; i++) {
-    pos[i * 3] = S.pos.x + (Math.random() - 0.5) * 14;
-    pos[i * 3 + 1] = S.pos.y + Math.random() * 10;
-    pos[i * 3 + 2] = S.pos.z + (Math.random() - 0.5) * 14;
+    pos[i * 3] = S.pos.x; pos[i * 3 + 1] = S.pos.y; pos[i * 3 + 2] = S.pos.z;
+    const th = Math.random() * Math.PI * 2, ph = Math.acos(2 * Math.random() - 1);
+    const sp = 6 + Math.random() * 26;
+    vel[i * 3] = Math.sin(ph) * Math.cos(th) * sp;
+    vel[i * 3 + 1] = Math.abs(Math.cos(ph)) * sp * 0.9 + 4;
+    vel[i * 3 + 2] = Math.sin(ph) * Math.sin(th) * sp;
+    const c = Math.random() < 0.45 ? cA : (Math.random() < 0.5 ? cB : cC);
+    col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b;
   }
+  const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  crashSmoke = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0x555550, size: 3.2, transparent: true, opacity: 0.85 }));
+  geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  crashDebris = {
+    points: new THREE.Points(geo, new THREE.PointsMaterial({ size: 2.4, vertexColors: true, transparent: true, opacity: 0.95 })),
+    vel, life: 5,
+  };
+  scene.add(crashDebris.points);
+  // smoke: slow-rising grey puff over the wreck
+  const sgeo = new THREE.BufferGeometry();
+  const n2 = 260;
+  const spos = new Float32Array(n2 * 3);
+  for (let i = 0; i < n2; i++) {
+    spos[i * 3] = S.pos.x + (Math.random() - 0.5) * 14;
+    spos[i * 3 + 1] = S.pos.y + Math.random() * 10;
+    spos[i * 3 + 2] = S.pos.z + (Math.random() - 0.5) * 14;
+  }
+  sgeo.setAttribute('position', new THREE.BufferAttribute(spos, 3));
+  crashSmoke = new THREE.Points(sgeo, new THREE.PointsMaterial({ color: 0x555550, size: 3.2, transparent: true, opacity: 0.85 }));
   scene.add(crashSmoke);
   aircraft.group.visible = false;
   showIncident(S, reason);
-  audio.splash();
+  // water impact splashes; a land/building impact thuds
+  if (isWater(S.pos.x, S.pos.z)) audio.splash(); else audio.crashThud();
 }
 
 function updateAircraftVisual(dt, time) {
@@ -264,10 +313,18 @@ function frame(timeMs) {
   frame.last = timeMs;
   elapsed += dt;
   const time = elapsed;
+  frameCount++;
+  window.__mistral.frames = frameCount;
   if (paused) { renderer.render(scene, camera); return; }
   water.update(dt, time);
   clouds.update(dt, time, weather);
   rain.update(dt, S ? S.pos : new THREE.Vector3(0, 100, 0), weather);
+  lightning.update(dt, time, weather, S ? S.pos : null, () => audio.thunder());
+  if (flashLevel > 0) {
+    flashLevel = Math.max(0, flashLevel - dt * 1.4);
+    const flashEl = document.getElementById('flash');
+    if (flashEl) flashEl.style.opacity = String(flashLevel * 0.85);
+  }
   traffic.update(dt, time);
   ships.update(dt, time);
   lighthouse.update(time);
@@ -305,14 +362,39 @@ function frame(timeMs) {
     if (S.stall && time - lastStallHorn > 1.2) { lastStallHorn = time; audio.stallHorn(true); }
     const cue = ilsAudioCue(ils, time);
     if (cue) audio.markerBeep(cue);
-    audio.update(S, F);
+    audio.update(S, F, weather);
     updateAircraftVisual(dt, time);
     updateCamera(rig, S, aircraft, dt);
     if (cockpit && rig.mode === 'cockpit') cockpit.update(S, F, ils, dt, time);
     hud.update(S, F, D, ils, sortie, weather);
   } else if (mode === 'crash' && S) {
-    orbitCrashCamera(rig, S, time);
+    orbitCrashCamera(rig, S, time, dt);
     if (crashSmoke) { crashSmoke.rotation.y += dt * 0.2; crashSmoke.position.y += dt * 1.2; }
+    if (crashFire) {
+      crashFire.intensity *= Math.exp(-dt * 1.6);
+      if (crashFire.intensity < 1) { scene.remove(crashFire); crashFire = null; }
+    }
+    if (crashDebris) {
+      const arr = crashDebris.points.geometry.attributes.position.array;
+      const v = crashDebris.vel;
+      for (let i = 0; i < v.length / 3; i++) {
+        v[i * 3 + 1] -= 12 * dt;
+        arr[i * 3] += v[i * 3] * dt;
+        arr[i * 3 + 1] += v[i * 3 + 1] * dt;
+        arr[i * 3 + 2] += v[i * 3 + 2] * dt;
+        const gy = Math.max(terrainHeight(arr[i * 3], arr[i * 3 + 2]), 0.3);
+        if (arr[i * 3 + 1] < gy + 0.4) {
+          arr[i * 3 + 1] = gy + 0.4;
+          v[i * 3 + 1] = Math.abs(v[i * 3 + 1]) * 0.25;
+          v[i * 3] *= 0.6; v[i * 3 + 2] *= 0.6;
+        }
+      }
+      crashDebris.points.geometry.attributes.position.needsUpdate = true;
+      crashDebris.life -= dt;
+      crashDebris.points.material.opacity = Math.max(0, Math.min(0.95, crashDebris.life / 2));
+      if (crashDebris.life <= 0) { scene.remove(crashDebris.points); crashDebris = null; }
+    }
+    rig.shake = Math.max(0, rig.shake - dt * 0.5);
     updateAircraftVisual(0, time);
   } else if (mode === 'debrief' && S) {
     updateCamera(rig, S, aircraft, dt);

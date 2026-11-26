@@ -101,34 +101,144 @@ export function buildClouds(scene) {
 }
 
 export function buildRain(scene) {
-  const COUNT = 2600;
-  const geo = new THREE.BufferGeometry();
-  const pos = new Float32Array(COUNT * 3);
+  // Slanted streaks (LineSegments), not dots: each drop is a short line
+  // aligned with its velocity, so the rain visibly leans with the wind —
+  // the harder the Mistral blows, the harder the slant.
+  const COUNT = 900;
+  const pos = new Float32Array(COUNT * 2 * 3);
+  const drops = new Float32Array(COUNT * 3);
   for (let i = 0; i < COUNT; i++) {
-    pos[i * 3] = (Math.random() - 0.5) * 900;
-    pos[i * 3 + 1] = Math.random() * 320;
-    pos[i * 3 + 2] = (Math.random() - 0.5) * 900;
+    drops[i * 3] = (Math.random() - 0.5) * 900;
+    drops[i * 3 + 1] = Math.random() * 320;
+    drops[i * 3 + 2] = (Math.random() - 0.5) * 900;
   }
+  const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-  const mat = new THREE.PointsMaterial({ color: 0xcfe0ee, size: 1.6, transparent: true, opacity: 0.0 });
-  const points = new THREE.Points(geo, mat);
-  points.visible = false;
-  scene.add(points);
+  const mat = new THREE.LineBasicMaterial({ color: 0xcfe0ee, transparent: true, opacity: 0 });
+  const lines = new THREE.LineSegments(geo, mat);
+  lines.visible = false;
+  lines.frustumCulled = false;
+  scene.add(lines);
   return {
-    points,
+    points: lines,
     update(dt, aircraftPos, weather) {
       const active = weather.storm && weather.rain;
-      points.visible = active;
+      lines.visible = active;
       if (!active) return;
-      mat.opacity = 0.55 * weather.stormIntensity;
-      points.position.set(aircraftPos.x, aircraftPos.y - 120, aircraftPos.z);
-      const arr = geo.attributes.position.array;
+      mat.opacity = 0.5 * weather.stormIntensity;
+      lines.position.set(aircraftPos.x, aircraftPos.y - 120, aircraftPos.z);
+      const wind = windVectorAt(weather, aircraftPos.y);
+      // streak tilt follows the live wind (exaggerated ~3x so 24 kt reads)
+      const sx = wind.x * 0.35, sz = wind.z * 0.35, sy = 14;
+      const fall = 260;
       for (let i = 0; i < COUNT; i++) {
-        arr[i * 3 + 1] -= dt * 260;
-        arr[i * 3] += dt * 34; // wind slant
-        if (arr[i * 3 + 1] < 0) arr[i * 3 + 1] = 320;
+        let x = drops[i * 3], y = drops[i * 3 + 1], z = drops[i * 3 + 2];
+        y -= fall * dt;
+        x += wind.x * 3 * dt;
+        z += wind.z * 3 * dt;
+        if (y < 0) { y = 320; x = (Math.random() - 0.5) * 900; z = (Math.random() - 0.5) * 900; }
+        drops[i * 3] = x; drops[i * 3 + 1] = y; drops[i * 3 + 2] = z;
+        pos[i * 6] = x; pos[i * 6 + 1] = y; pos[i * 6 + 2] = z;
+        pos[i * 6 + 3] = x - sx; pos[i * 6 + 4] = y + sy; pos[i * 6 + 5] = z - sz;
       }
       geo.attributes.position.needsUpdate = true;
+    },
+  };
+}
+
+export function buildLightning(scene) {
+  // Periodic lightning, storm only: a jagged bolt (two crossed additive
+  // planes with a canvas-drawn bolt) plus a sky flash (dedicated
+  // directional light spiking and fading over ~1 s). Strikes every 4-7 s
+  // near the aircraft in the storm zone; thunder fires via onThunder
+  // ~0.4-0.9 s after the flash, the way sound lags light.
+  const c = document.createElement('canvas'); c.width = 128; c.height = 512;
+  const g = c.getContext('2d');
+  const pts = [];
+  let x = 64;
+  pts.push([x, 0]);
+  for (let y = 42; y <= 512; y += 42) {
+    x += (Math.random() - 0.5) * 70;
+    x = Math.max(14, Math.min(114, x));
+    pts.push([x, y]);
+  }
+  const trace = (style, width, blur) => {
+    g.strokeStyle = style; g.lineWidth = width; g.lineCap = 'round';
+    g.shadowColor = '#cfe6ff'; g.shadowBlur = blur;
+    g.beginPath();
+    g.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]);
+    g.stroke();
+  };
+  g.clearRect(0, 0, 128, 512);
+  trace('rgba(190,220,255,0.9)', 10, 18);
+  trace('rgba(255,255,255,0.95)', 3.5, 8);
+  const tex = new THREE.CanvasTexture(c);
+  const boltGeo = new THREE.PlaneGeometry(90, 900);
+  const boltMat = new THREE.MeshBasicMaterial({
+    map: tex, transparent: true, opacity: 0,
+    blending: THREE.AdditiveBlending, depthWrite: false,
+    side: THREE.DoubleSide, fog: false,
+  });
+  const boltA = new THREE.Mesh(boltGeo, boltMat);
+  const boltB = new THREE.Mesh(boltGeo, boltMat.clone());
+  boltB.rotation.y = Math.PI / 2;
+  const group = new THREE.Group();
+  group.add(boltA, boltB);
+  group.visible = false;
+  scene.add(group);
+  const flashLight = new THREE.DirectionalLight(0xdfeaff, 0);
+  flashLight.position.set(0, 900, 0);
+  scene.add(flashLight);
+  let nextIn = 1.5 + Math.random() * 1.5;
+  let boltT = 0;
+  let flash = 0;
+  let thunderAt = -1;
+  let strikes = 0; // diagnostic counter: how many bolts have fired
+  return {
+    group,
+    get strikes() { return strikes; },
+    update(dt, time, weather, aircraftPos, onThunder) {
+      if (!weather.storm || !aircraftPos) {
+        group.visible = false;
+        flashLight.intensity = 0;
+        return;
+      }
+      nextIn -= dt;
+      if (nextIn <= 0) {
+        const ang = Math.random() * Math.PI * 2;
+        const dist = 500 + Math.random() * 1100;
+        const sx = aircraftPos.x + Math.cos(ang) * dist;
+        const sz = aircraftPos.z + Math.sin(ang) * dist;
+        group.position.set(sx, 560, sz);
+        group.rotation.y = Math.random() * Math.PI;
+        group.visible = true;
+        boltT = 0.22;
+        flash = 1;
+        flashLight.position.set(sx, 900, sz);
+        thunderAt = time + 0.35 + Math.random() * 0.5;
+        nextIn = 4 + Math.random() * 3;
+        strikes++;
+      }
+      if (boltT > 0) {
+        boltT -= dt;
+        // double-stroke flicker: bright, dip, bright again, then gone
+        const on = boltT > 0.14 || (boltT > 0.06 && boltT < 0.1);
+        const op = on ? 0.95 : 0.15;
+        boltMat.opacity = op;
+        boltB.material.opacity = op;
+        if (boltT <= 0) { group.visible = false; boltMat.opacity = 0; boltB.material.opacity = 0; }
+      }
+      if (flash > 0) {
+        flash = Math.max(0, flash - dt * 1.0);
+        flashLight.intensity = flash * 5.5;
+      } else {
+        flashLight.intensity = 0;
+      }
+      if (thunderAt > 0 && time >= thunderAt) {
+        thunderAt = -1;
+        if (onThunder) onThunder();
+      }
     },
   };
 }

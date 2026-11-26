@@ -212,6 +212,48 @@ export function stepFlight(S, input, weather, dt) {
   if (!water && S.pos.y < groundH + 0.5 && S.airspeedKt > 30 && !S.onGround) {
     S.crashed = true; S.crashReason = 'CONTROLLED FLIGHT INTO TERRAIN — struck the limestone cliff';
   }
+  // building strike: rooftops, cranes, terminal, church tower, lighthouse,
+  // ATC tower. Only while airborne and fast; the RWY 09/27 final (z ~ 0)
+  // never enters the city box (z max -500), so a normal approach stays safe.
+  if (!S.crashed && !S.onGround && S.airspeedKt > 30) {
+    const gy = terrainHeight(S.pos.x, S.pos.z);
+    const inCity = S.pos.x > -2600 && S.pos.x < -500 && S.pos.z > -2600 && S.pos.z < -500;
+    if (inCity && S.pos.y < gy + 24) {
+      S.crashed = true; S.crashReason = 'STRUCK A BUILDING — clipped a rooftop over Porto Bellavista';
+    }
+    // cargo cranes, south of the runway (x = -900 + i*170, z = 950, 60 m tall)
+    for (let i = 0; i < 4 && !S.crashed; i++) {
+      const dx = S.pos.x - (-900 + i * 170), dz = S.pos.z - 950;
+      if (dx * dx + dz * dz < 12 * 12 && S.pos.y < gy + 60) {
+        S.crashed = true; S.crashReason = 'STRUCK A CRANE — hit a harbour crane at Porto Bellavista';
+      }
+    }
+    // terminal glass block (-420, -260), 150 x 46 m, 20 m tall
+    if (!S.crashed && Math.abs(S.pos.x + 420) < 78 && Math.abs(S.pos.z + 260) < 26 && S.pos.y < gy + 20) {
+      S.crashed = true; S.crashReason = 'STRUCK A BUILDING — hit the Bellavista terminal';
+    }
+    // church bell tower (-1120, -300), 46 m tall
+    if (!S.crashed) {
+      const dx = S.pos.x + 1120, dz = S.pos.z + 300;
+      if (dx * dx + dz * dz < 10 * 10 && S.pos.y < gy + 46) {
+        S.crashed = true; S.crashReason = 'STRUCK A BUILDING — hit the church bell tower';
+      }
+    }
+    // lighthouse (1180, -1500), 40 m tall
+    if (!S.crashed) {
+      const dx = S.pos.x - 1180, dz = S.pos.z + 1500;
+      if (dx * dx + dz * dz < 14 * 14 && S.pos.y < gy + 40) {
+        S.crashed = true; S.crashReason = 'STRUCK THE LIGHTHOUSE — hit the Faro beacon tower';
+      }
+    }
+    // ATC tower (-120, -120), 50 m tall, beside the runway
+    if (!S.crashed) {
+      const dx = S.pos.x + 120, dz = S.pos.z + 120;
+      if (dx * dx + dz * dz < 10 * 10 && S.pos.y < gy + 50) {
+        S.crashed = true; S.crashReason = 'STRUCK A BUILDING — hit the ATC tower';
+      }
+    }
+  }
   if (Number.isNaN(S.pos.x) || !Number.isFinite(S.pos.x)) {
     S.pos.set(0, 200, 0); S.vel.set(0, 0, 0);
   }

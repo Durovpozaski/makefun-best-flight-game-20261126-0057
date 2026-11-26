@@ -9,6 +9,7 @@
     font-family: "Segoe UI", system-ui, sans-serif; color: #e8f2ff; }
   #game { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
   #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #flash { position: fixed; inset: 0; background: #fff8e8; opacity: 0; pointer-events: none; z-index: 9; }
   .mono { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
   /* ---- collimated HUD: thin strokes, translucent dark chips, never a white box ---- */
   #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 5;
@@ -164,6 +165,7 @@
   </div>
 </div>
 
+<div id="flash"></div>
 <div id="debrief"></div>
 <div id="help"></div>
 
