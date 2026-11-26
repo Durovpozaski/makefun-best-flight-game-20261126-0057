@@ -41,15 +41,88 @@ export function buildTraffic(scene) {
     scene.add(plane);
     planes.push({ mesh: plane, ...p });
   }
+  // Formation escorts: two wingmen that hold station on the hero aircraft
+  // (left-ahead high, right-behind low). Only shown for the cover shots
+  // (main.js passes showEscorts) — a lone hero reads empty, a three-ship
+  // formation over the harbor reads epic.
+  const escorts = [
+    { color: 0xc23a2e, formation: true, lateral: -48, ahead: 50, up: 10 },
+    { color: 0x2e6db4, formation: true, lateral: 44, ahead: 48, up: -8 },
+  ];
+  for (const e of escorts) {
+    const plane = makeSimplePlane(e.color);
+    plane.visible = false;
+    scene.add(plane);
+    planes.push({ mesh: plane, ...e });
+  }
   return {
     planes,
-    update(dt, time) {
+    update(dt, time, S, showEscorts) {
       for (const p of planes) {
+        if (p.formation) {
+          if (!showEscorts || !S) { p.mesh.visible = false; continue; }
+          p.mesh.visible = true;
+          const h = S.headingDeg * Math.PI / 180;
+          const fx = Math.sin(h), fz = -Math.cos(h); // forward
+          const rx = Math.cos(h), rz = Math.sin(h);  // pilot's right
+          p.mesh.position.set(
+            S.pos.x + fx * p.ahead + rx * p.lateral,
+            S.pos.y + p.up + Math.sin(time * 0.9 + p.lateral) * 1.5,
+            S.pos.z + fz * p.ahead + rz * p.lateral);
+          p.mesh.rotation.y = Math.PI - h; // nose (+z) onto the heading
+          p.mesh.rotation.z = 0.12; // gentle bank into formation
+          p.mesh.userData.strobe.material.color.setHex((time % 1.2) < 0.12 ? 0xffffff : 0x333333);
+          continue;
+        }
         const a = time * p.speed + p.phase;
         p.mesh.position.set(p.cx + Math.cos(a) * p.r, p.alt + Math.sin(time * 0.3 + p.phase) * 18, p.cz + Math.sin(a) * p.r);
         p.mesh.rotation.y = -a - Math.PI / 2 + Math.PI;
         p.mesh.rotation.z = 0.18; // gentle bank into the turn
         p.mesh.userData.strobe.material.color.setHex((time % 1.2) < 0.12 ? 0xffffff : 0x333333);
+      }
+    },
+  };
+}
+
+export function buildBirds(scene) {
+  // A flock of seabirds circling low over the bay, right on the cover
+  // low-pass line: dark flapping V shapes against the sky and sea.
+  const group = new THREE.Group();
+  const wingMat = new THREE.MeshBasicMaterial({ color: 0x1e1a16, side: THREE.DoubleSide });
+  const birds = [];
+  const cx = 3050, cy = 115, cz = 1450;
+  for (let i = 0; i < 14; i++) {
+    const b = new THREE.Group();
+    const wgeo = new THREE.BoxGeometry(2.6, 0.08, 0.7);
+    const wl = new THREE.Mesh(wgeo, wingMat);
+    wl.position.x = -1.3;
+    const wr = new THREE.Mesh(wgeo, wingMat);
+    wr.position.x = 1.3;
+    b.add(wl, wr);
+    group.add(b);
+    birds.push({
+      mesh: b, wl, wr,
+      r: 60 + (i * 37) % 100,
+      h: cy + ((i * 53) % 50) - 25,
+      speed: 0.14 + (i % 4) * 0.02,
+      phase: (i * 1.7) % (Math.PI * 2),
+      flap: 5 + (i % 3),
+    });
+  }
+  scene.add(group);
+  return {
+    group,
+    update(dt, time) {
+      for (const b of birds) {
+        const a = time * b.speed + b.phase;
+        const x = cx + Math.cos(a) * b.r;
+        const z = cz + Math.sin(a) * b.r;
+        const y = b.h + Math.sin(time * 0.8 + b.phase) * 6;
+        b.mesh.position.set(x, y, z);
+        b.mesh.rotation.y = -a; // face along the orbit tangent
+        const flap = Math.sin(time * b.flap + b.phase) * 0.55;
+        b.wl.rotation.z = flap;
+        b.wr.rotation.z = -flap;
       }
     },
   };

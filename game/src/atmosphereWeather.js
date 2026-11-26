@@ -52,6 +52,11 @@ export function buildSky(scene, renderer) {
   sun.shadow.camera.far = 22000;
   scene.add(sun);
   scene.add(new THREE.HemisphereLight(0x9db4d6, 0x8a6f4d, 0.85));
+  // Soft eastern fill: lifts the camera-facing (backlit) side of the
+  // aircraft on westbound shots without washing out the golden hour.
+  const fill = new THREE.DirectionalLight(0xffd9b0, 0.45);
+  fill.position.set(8000, 1500, -2000);
+  scene.add(fill);
   const sunSprite = new THREE.Mesh(
     new THREE.CircleGeometry(420, 32),
     new THREE.MeshBasicMaterial({ color: 0xffe6b0, fog: false, transparent: true, opacity: 0.95 }),
@@ -59,7 +64,47 @@ export function buildSky(scene, renderer) {
   sunSprite.position.set(-9200, 2600, 3900);
   sunSprite.lookAt(0, 0, 0);
   scene.add(sunSprite);
-  return { sky, sun, sunSprite };
+  // Golden-hour lens flare: additive radial glow + a wide anamorphic
+  // streak, both parked on the sun so any shot looking west gets the
+  // glare. Procedural canvas textures, zero network.
+  const flareCanvas = document.createElement('canvas');
+  flareCanvas.width = 256; flareCanvas.height = 256;
+  const fg = flareCanvas.getContext('2d');
+  const grad = fg.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grad.addColorStop(0, 'rgba(255,246,220,1)');
+  grad.addColorStop(0.18, 'rgba(255,214,140,0.75)');
+  grad.addColorStop(0.45, 'rgba(255,170,80,0.28)');
+  grad.addColorStop(1, 'rgba(255,150,60,0)');
+  fg.fillStyle = grad; fg.fillRect(0, 0, 256, 256);
+  fg.strokeStyle = 'rgba(255,240,200,0.55)'; fg.lineWidth = 5;
+  fg.beginPath(); fg.arc(128, 128, 62, 0, Math.PI * 2); fg.stroke();
+  fg.strokeStyle = 'rgba(255,220,160,0.3)'; fg.lineWidth = 2;
+  fg.beginPath(); fg.arc(128, 128, 92, 0, Math.PI * 2); fg.stroke();
+  const flareTex = new THREE.CanvasTexture(flareCanvas);
+  const flare = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: flareTex, blending: THREE.AdditiveBlending, depthWrite: false,
+    fog: false, transparent: true, opacity: 0.9,
+  }));
+  flare.position.set(-9200, 2600, 3900);
+  flare.scale.set(3400, 3400, 1);
+  scene.add(flare);
+  const streakCanvas = document.createElement('canvas');
+  streakCanvas.width = 256; streakCanvas.height = 64;
+  const sg = streakCanvas.getContext('2d');
+  const sgrad = sg.createLinearGradient(0, 0, 256, 0);
+  sgrad.addColorStop(0, 'rgba(255,190,110,0)');
+  sgrad.addColorStop(0.5, 'rgba(255,225,170,0.85)');
+  sgrad.addColorStop(1, 'rgba(255,190,110,0)');
+  sg.fillStyle = sgrad; sg.fillRect(0, 0, 256, 64);
+  const streakTex = new THREE.CanvasTexture(streakCanvas);
+  const streak = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: streakTex, blending: THREE.AdditiveBlending, depthWrite: false,
+    fog: false, transparent: true, opacity: 0.5,
+  }));
+  streak.position.set(-9200, 2600, 3900);
+  streak.scale.set(6500, 480, 1);
+  scene.add(streak);
+  return { sky, sun, sunSprite, flare, streak };
 }
 
 export function buildClouds(scene) {
@@ -84,6 +129,37 @@ export function buildClouds(scene) {
     const y = isStorm ? 1100 + (i % 3) * 140 : 1500 + ((i * 211) % 900);
     cluster.position.set(x, y, z);
     cluster.userData.storm = isStorm;
+    group.add(cluster);
+    puffs.push(cluster);
+  }
+  // Hero clusters: big, low, warm-lit cumulus strung along the cover
+  // corridor and a towering bank on the western horizon around the sun,
+  // so a westbound cover frame has layered clouds instead of empty sky.
+  const heroSpots = [
+    { x: -2500, y: 700, z: -800, r: 300, n: 7 },
+    { x: -800, y: 850, z: 600, r: 260, n: 6 },
+    { x: 800, y: 750, z: -400, r: 280, n: 6 },
+    { x: 1400, y: 700, z: 2200, r: 320, n: 7 },
+    { x: 3500, y: 900, z: -1000, r: 260, n: 5 },
+    { x: 500, y: 1100, z: 1800, r: 300, n: 6 },
+    { x: -5200, y: 900, z: 2800, r: 380, n: 8 },
+    { x: -4800, y: 1250, z: 3600, r: 340, n: 7 },
+    { x: -5600, y: 700, z: 1800, r: 360, n: 8 },
+  ];
+  const warmMat = new THREE.MeshLambertMaterial({ color: 0xffe6c0, transparent: true, opacity: 0.88, emissive: 0x8a5426, emissiveIntensity: 0.35 });
+  const shadeMat = new THREE.MeshLambertMaterial({ color: 0xc4b2a4, transparent: true, opacity: 0.85, emissive: 0x4a3a34, emissiveIntensity: 0.3 });
+  for (let i = 0; i < heroSpots.length; i++) {
+    const sp = heroSpots[i];
+    const cluster = new THREE.Group();
+    for (let j = 0; j < sp.n; j++) {
+      const r = sp.r * (0.55 + ((i * 31 + j * 47) % 50) / 100);
+      const puff = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), j % 3 === 2 ? shadeMat : warmMat);
+      puff.position.set((j - sp.n / 2) * r * 0.9, ((j * 37) % 90) - 30, ((j * 53) % 120) - 60);
+      puff.scale.y = 0.55;
+      cluster.add(puff);
+    }
+    cluster.position.set(sp.x, sp.y, sp.z);
+    cluster.userData.storm = false;
     group.add(cluster);
     puffs.push(cluster);
   }

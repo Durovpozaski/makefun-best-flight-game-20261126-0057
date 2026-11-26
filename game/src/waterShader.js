@@ -41,7 +41,10 @@ void main() {
   vec3 viewDir = normalize(cameraPosition - vPos);
   vec3 hv = normalize(viewDir + normalize(uSunDir));
   float spec = pow(max(dot(n, hv), 0.0), 220.0);
-  col += vec3(1.0, 0.72, 0.38) * spec * 1.6;
+  col += vec3(1.0, 0.72, 0.38) * spec * 2.6;
+  // broad secondary sparkle so the sun path glitters even off-axis
+  float spec2 = pow(max(dot(n, hv), 0.0), 24.0);
+  col += vec3(1.0, 0.72, 0.38) * spec2 * 0.30;
   float fres = pow(1.0 - max(dot(n, viewDir), 0.0), 3.0);
   col = mix(col, vec3(0.98, 0.78, 0.52), fres * 0.28);
   gl_FragColor = vec4(col, 0.94);

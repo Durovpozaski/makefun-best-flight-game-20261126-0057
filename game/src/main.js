@@ -9,7 +9,7 @@ import { buildWater } from './waterShader.js';
 import { createWeather, buildSky, buildClouds, buildRain, buildLightning, windVectorAt } from './atmosphereWeather.js';
 import { buildCity, buildLighthouse } from './harborAndCity.js';
 import { buildAirfields, buildSeaplaneBasin } from './airfieldsAndSeaplane.js';
-import { buildTraffic, buildShips } from './trafficAndShips.js';
+import { buildTraffic, buildShips, buildBirds } from './trafficAndShips.js';
 import { buildAircraft } from './aircraftGeometry.js';
 import { buildCockpit } from './cockpit3dAvionics.js';
 import { createFlightState, stepFlight, centerlineOffsetM } from './aerodynamics6dof.js';
@@ -57,6 +57,7 @@ const airfields = buildAirfields(scene, textures);
 const basin = buildSeaplaneBasin(scene);
 const traffic = buildTraffic(scene);
 const ships = buildShips(scene);
+const birds = buildBirds(scene);
 
 const rig = createCameraRig(camera);
 const input = createInput();
@@ -153,9 +154,15 @@ function resetFlight(sortieId, type, fuelGal, startOverride) {
 
 function applyShot(name) {
   if (name === 'cover') {
+    // Low pass over the harbor into the setting sun (beats the RWY 27
+    // approach candidate: no flat brown terrain in frame, sun dead
+    // ahead, golden sea glitter, ferry + marina + cliff city on the
+    // horizon, formation wingmen, birds). Gear up, clean config, 118 kt.
+    // ILS reads OUT OF RANGE (the ILS serves RWY 09); the cover sells
+    // the vista, not the approach.
     resetFlight(1, 'albatro', 82, {
-      pos: new THREE.Vector3(-1900, 80, 10), hdg: 91, pitch: -2, roll: 0,
-      kt: 112, vsiFpm: -320, throttle: 0.55, flapStage: 1, gearDown: true,
+      pos: new THREE.Vector3(3200, 90, 1400), hdg: 247, pitch: -1, roll: 0,
+      kt: 118, vsiFpm: 0, throttle: 0.6, flapStage: 0, gearDown: false,
     });
     rig.mode = 'chase';
   } else if (name === 'cockpit') {
@@ -325,8 +332,9 @@ function frame(timeMs) {
     const flashEl = document.getElementById('flash');
     if (flashEl) flashEl.style.opacity = String(flashLevel * 0.85);
   }
-  traffic.update(dt, time);
+  traffic.update(dt, time, S, shot === 'cover' && mode === 'fly');
   ships.update(dt, time);
+  birds.update(dt, time);
   lighthouse.update(time);
   basin.update(dt, time);
   airfields.updateApproach(time);
