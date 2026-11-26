@@ -140,7 +140,7 @@ function resetFlight(sortieId, type, fuelGal, startOverride) {
 function applyShot(name) {
   if (name === 'cover') {
     resetFlight(1, 'albatro', 82, {
-      pos: new THREE.Vector3(-2580, 116, 8), hdg: 91, pitch: -2, roll: 0,
+      pos: new THREE.Vector3(-1900, 80, 10), hdg: 91, pitch: -2, roll: 0,
       kt: 112, vsiFpm: -320, throttle: 0.55, flapStage: 1, gearDown: true,
     });
     rig.mode = 'chase';

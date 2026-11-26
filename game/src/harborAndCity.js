@@ -100,6 +100,14 @@ export function buildCity(scene, textures) {
   }
   for (let i = 0; i < 200; i++) {
     const x = -2600 + rnd() * 2400, z = -2600 + rnd() * 3600;
+    // keep the Bellavista runway strip (x -1000..1000, |z| < 55) clear:
+    // an olive on the asphalt reads as a tree blocking RWY 09/27
+    if (Math.abs(z) < 55 && x > -1000 && x < 1000) {
+      q.identity();
+      m.compose(new THREE.Vector3(x, -50, z), q, sc.set(1, 1, 1));
+      olives.setMatrixAt(i, m);
+      continue;
+    }
     const g = terrainHeight(x, z);
     q.identity();
     m.compose(new THREE.Vector3(x, g + 3, z), q, sc.set(0.8 + rnd() * 0.8, 0.7 + rnd() * 0.5, 0.8 + rnd() * 0.8));
