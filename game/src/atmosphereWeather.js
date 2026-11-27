@@ -104,7 +104,32 @@ export function buildSky(scene, renderer) {
   streak.position.set(-9200, 2600, 3900);
   streak.scale.set(8000, 560, 1);
   scene.add(streak);
-  return { sky, sun, sunSprite, flare, streak };
+  return { sky, sun, sunSprite, flare, streak, uniforms: skyMat.uniforms, renderer, scene };
+}
+
+// Sky moods: the reference's dusk shots are deep red-orange, its storm
+// shot is a dark night squall. applySkyMood re-tints the dome, fog, key
+// light and exposure in one call (called from resetFlight per sortie).
+const SKY_MOODS = {
+  golden: { top: 0x5f7fb0, mid: 0xe9a86a, low: 0xf7c98a, fog: 0xe8b07e,
+    sun: 0xffc98a, sunI: 2.4, exposure: 1.08, flare: 0.9, streak: 0.65, sprite: 0.95 },
+  sunset: { top: 0x4a3a6a, mid: 0xff7a3a, low: 0xffd08a, fog: 0xe89a6a,
+    sun: 0xffb36a, sunI: 2.2, exposure: 1.12, flare: 0.9, streak: 0.7, sprite: 0.95 },
+  dusk: { top: 0x2e1626, mid: 0xff5a2a, low: 0xffc06a, fog: 0xd86a4a,
+    sun: 0xff8a3a, sunI: 2.0, exposure: 1.15, flare: 0.9, streak: 0.7, sprite: 0.95 },
+  'storm-night': { top: 0x12121c, mid: 0x2c2c3c, low: 0x5a4a52, fog: 0x1c1c26,
+    sun: 0x8a90a8, sunI: 0.7, exposure: 0.9, flare: 0.35, streak: 0.3, sprite: 0.4 },
+};
+export function applySkyMood(skyLights, mood) {
+  const m = SKY_MOODS[mood] || SKY_MOODS.golden;
+  const u = skyLights.uniforms;
+  u.top.value.setHex(m.top); u.mid.value.setHex(m.mid); u.low.value.setHex(m.low);
+  skyLights.sun.color.setHex(m.sun); skyLights.sun.intensity = m.sunI;
+  skyLights.renderer.toneMappingExposure = m.exposure;
+  skyLights.flare.material.opacity = m.flare;
+  skyLights.streak.material.opacity = m.streak;
+  skyLights.sunSprite.material.opacity = m.sprite;
+  if (skyLights.scene) skyLights.scene.fog.color.setHex(m.fog);
 }
 
 function makeCloudTexture() {

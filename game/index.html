@@ -14,7 +14,7 @@
   /* ---- collimated HUD: thin strokes, translucent dark chips, never a white box ---- */
   #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 5;
     text-shadow: 0 1px 3px rgba(0,0,0,.85); }
-  .tape { position: absolute; top: 50%; transform: translateY(-50%); width: 74px;
+  .tape { position: absolute; top: 62%; transform: translateY(-50%); width: 74px;
     background: rgba(8,16,22,.55); border: 1px solid rgba(126,226,160,.45); border-radius: 4px;
     padding: 6px 8px; font-size: 15px; }
   .tape .lbl { font-size: 10px; letter-spacing: 2px; color: #7ee2a0; }
@@ -24,13 +24,48 @@
   #tape-alt { right: 14px; text-align: left; }
   #hud-hdg-bar { position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
     background: rgba(8,16,22,.55); border: 1px solid rgba(126,226,160,.45); border-radius: 4px;
-    padding: 5px 14px; font-size: 15px; letter-spacing: 1px; }
+    padding: 4px 14px 5px; font-size: 15px; letter-spacing: 1px; text-align: center; }
+  #hud-compass { font-size: 12px; letter-spacing: 3px; color: #9fc4d8; white-space: nowrap; }
+  #hud-compass b { color: #ffd24a; }
   #hud-hdg-bar b { font-size: 24px; color: #ffd24a; }
-  #hud-vsi-box { position: absolute; top: 64px; right: 14px; font-size: 13px;
+  #hud-vsi-box { position: absolute; top: 296px; right: 14px; font-size: 13px;
     background: rgba(8,16,22,.55); border: 1px solid rgba(126,226,160,.35); border-radius: 4px; padding: 4px 8px; }
-  #hud-sortie-bar { position: absolute; top: 12px; left: 14px; max-width: 430px; font-size: 13px; }
-  #hud-sortie-bar .sname { color: #ffd24a; font-weight: 700; letter-spacing: 1px; }
-  #hud-objective { color: #cfe8d8; margin-top: 2px; }
+  /* ---- dense reference-style panels: stage checklist, advisor, touchdown, nav ---- */
+  .hbox { position: absolute; background: rgba(8,16,22,.62); border: 1px solid rgba(126,226,160,.45);
+    border-radius: 5px; padding: 7px 10px; font-size: 13px; line-height: 1.45; }
+  .hbox .ttl { font-weight: 700; letter-spacing: 1px; color: #ffd24a; font-size: 13px; }
+  .hbox .ttl .r { float: right; color: #7ee2a0; font-size: 11px; border: 1px solid rgba(126,226,160,.5);
+    border-radius: 3px; padding: 0 5px; }
+  .stagebar { height: 6px; background: rgba(255,255,255,.14); border-radius: 3px; margin: 5px 0 6px; }
+  .stagebar i { display: block; height: 6px; background: #7ee2a0; border-radius: 3px; }
+  .srow { color: #cfe8d8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .srow.done { color: #7ee2a0; }
+  .srow.cur { color: #ffd24a; }
+  .srow .mk { display: inline-block; width: 16px; }
+  .emerg { margin-top: 6px; background: rgba(120,16,8,.55); border: 1px solid rgba(255,106,85,.65);
+    border-radius: 4px; padding: 5px 7px; color: #ffb0a0; font-size: 12px; line-height: 1.4; }
+  .emerg b { color: #ff8a70; letter-spacing: 1px; }
+  #hud-stage { left: 14px; top: 12px; width: 300px; }
+  #hud-advisor { left: 14px; top: 206px; width: 300px; }
+  #hud-advisor .ttl { color: #7ee2a0; }
+  #hud-advisor .adv { color: #e8f2ff; }
+  #hud-touchdown { left: 14px; top: 288px; width: 300px; display: none; }
+  #hud-touchdown .grade { float: right; color: #7ee2a0; font-weight: 800; font-size: 15px; }
+  #hud-touchdown .note { color: #cfe8d8; font-size: 12px; margin: 2px 0 6px; }
+  .tdgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+  .tdgrid span { display: block; font-size: 10px; letter-spacing: 1px; color: #9fc4d8; }
+  .tdgrid b { font-size: 15px; }
+  #hud-nav { right: 14px; top: 12px; width: 252px; }
+  #hud-nav .ttl { color: #e8f2ff; }
+  #hud-nav .ttl .r { color: #7ee2a0; }
+  #navmap { width: 230px; height: 118px; border: 1px solid rgba(126,226,160,.5); border-radius: 4px;
+    margin-top: 5px; background: #0a1410; }
+  .navrow { display: flex; justify-content: space-between; font-size: 12px; padding: 1px 0; }
+  .navrow span:first-child { color: #9fc4d8; letter-spacing: 1px; }
+  .navrow b { font-weight: 600; }
+  .navbtns { display: flex; gap: 4px; margin-top: 5px; }
+  .navbtns span { flex: 1; text-align: center; font-size: 11px; border: 1px solid rgba(126,226,160,.45);
+    border-radius: 3px; padding: 2px 0; color: #cfe8d8; }
   #hud-warnings { position: absolute; top: 96px; left: 50%; transform: translateX(-50%); text-align: center; }
   .warn { color: #ff6a55; font-weight: 700; font-size: 15px; letter-spacing: 1px;
     background: rgba(40,8,4,.55); border: 1px solid rgba(255,106,85,.6); border-radius: 4px;
@@ -39,7 +74,11 @@
   .chip { background: rgba(8,16,22,.55); border: 1px solid rgba(126,226,160,.35); border-radius: 4px;
     padding: 5px 9px; font-size: 13px; line-height: 1.5; }
   .chip .lbl { font-size: 10px; letter-spacing: 1px; color: #7ee2a0; }
-  #minimap { width: 190px; height: 150px; border: 1px solid rgba(126,226,160,.5); border-radius: 4px; }
+  #hud-atc { width: 296px; background: rgba(8,16,22,.62); border: 1px solid rgba(126,226,160,.45);
+    border-radius: 5px; padding: 6px 10px; font-size: 12px; line-height: 1.45; }
+  #hud-atc .ttl { color: #ffd24a; font-weight: 700; letter-spacing: 1px; }
+  #hud-atc .msg { color: #e8f2ff; font-style: italic; }
+  #hud-gauges { border: 1px solid rgba(126,226,160,.45); border-radius: 5px; background: rgba(8,16,22,.62); }
   #hud-ils-box { position: absolute; right: 14px; bottom: 168px; text-align: right; font-size: 13px;
     background: rgba(8,16,22,.55); border: 1px solid rgba(126,226,160,.35); border-radius: 4px; padding: 5px 9px; }
   #hud-loc, #hud-gs { position: absolute; width: 14px; height: 14px; background: #ffd24a;
@@ -64,14 +103,43 @@
   .btn:hover { filter: brightness(1.1); }
   .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 22px; font-size: 13px; color: #cfe8d8; margin-top: 10px; }
   .controls-grid b { color: #ffd24a; font-family: ui-monospace, monospace; }
-  #hangar { position: fixed; right: 18px; top: 18px; width: 430px; max-height: 92vh; overflow-y: auto;
-    z-index: 11; display: none; background: rgba(12,20,26,.92); border: 1px solid #c98a2e;
-    border-radius: 10px; padding: 16px 18px; font-size: 13px; }
-  #hangar h3 { margin: 0 0 8px; color: #ffd24a; letter-spacing: 2px; font-size: 15px; }
+  /* ---- fleet hangar & career dispatch board ---- */
+  #hangar { position: fixed; right: 18px; top: 10px; width: 560px; max-height: 98vh; overflow-y: auto;
+    z-index: 11; display: none; background: rgba(10,16,22,.94); border: 1px solid #c98a2e;
+    border-radius: 10px; padding: 10px 14px; font-size: 12px; }
+  #hangar h3 { margin: 0; color: #ffd24a; letter-spacing: 2px; font-size: 16px; }
+  #hangar h3 .flybtn { float: right; background: #ffd24a; color: #10141a; font-size: 12px;
+    padding: 3px 10px; border-radius: 4px; letter-spacing: 1px; }
+  .dstat { display: flex; gap: 6px; margin: 7px 0; }
+  .dstat div { flex: 1; background: rgba(126,226,160,.08); border: 1px solid rgba(126,226,160,.35);
+    border-radius: 5px; padding: 4px 4px; text-align: center; }
+  .dstat b { display: block; font-size: 18px; color: #ffd24a; }
+  .dstat span { font-size: 10px; letter-spacing: 1px; color: #9fc4d8; }
+  .acards { display: flex; gap: 6px; margin-bottom: 7px; }
+  .acard { flex: 1; border: 1px solid rgba(126,226,160,.35); border-radius: 5px; padding: 5px 8px;
+    background: rgba(8,16,22,.6); }
+  .acard.sel { border-color: #ffd24a; box-shadow: 0 0 0 1px #ffd24a inset; }
+  .acard b { color: #e8f2ff; font-size: 12px; letter-spacing: .5px; }
+  .acard div { color: #9fc4d8; font-size: 11px; margin-top: 2px; }
+  .dsec { font-size: 11px; letter-spacing: 2px; color: #7ee2a0; margin: 7px 0 3px; }
+  .dsort { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 12px; font-size: 12px; color: #cfe8d8; }
+  .dsort b { color: #ffd24a; font-size: 11px; }
+  .dsort .medal { float: right; color: #ffd24a; }
+  .dsort .medal.silver { color: #c9c9c9; }
   #hangar svg { width: 100%; height: auto; background: #0a1410; border: 1px solid #1d5a3a; border-radius: 4px; }
-  #hangar .sortie-list { margin: 10px 0; line-height: 1.7; color: #cfe8d8; }
-  #hangar .debrief-card { border: 1px solid #7ee2a0; border-radius: 6px; padding: 10px; margin-top: 10px; }
-  #hangar .debrief-card b { color: #7ee2a0; }
+  .barwrap { margin: 3px 0 6px; }
+  .barwrap .blbl { display: flex; justify-content: space-between; font-size: 11px; letter-spacing: 1px; color: #9fc4d8; }
+  .barwrap .blbl b { color: #ffd24a; }
+  .bar { height: 8px; background: rgba(255,255,255,.12); border-radius: 4px; margin-top: 2px; }
+  .bar i { display: block; height: 8px; background: linear-gradient(90deg, #7ee2a0, #ffd24a); border-radius: 4px; }
+  .dperf { display: flex; gap: 6px; }
+  .dperf div { flex: 1; text-align: center; border: 1px solid rgba(126,226,160,.3); border-radius: 5px; padding: 4px 0; }
+  .dperf b { display: block; font-size: 15px; color: #7ee2a0; }
+  .dperf span { font-size: 10px; letter-spacing: 1px; color: #9fc4d8; }
+  .crew { display: flex; gap: 6px; margin-top: 6px; }
+  .crew div { flex: 1; border: 1px solid rgba(126,226,160,.3); border-radius: 5px; padding: 5px 7px; font-size: 10px; }
+  .crew b { color: #ffd24a; font-size: 12px; }
+  .crew .pct { float: right; color: #7ee2a0; font-weight: 700; }
   #debrief { position: fixed; left: 50%; top: 50%; transform: translate(-50%,-50%); z-index: 12;
     display: none; width: 560px; max-width: 92vw; background: rgba(10,18,24,.94);
     border: 1px solid #7ee2a0; border-radius: 10px; padding: 22px 26px; }
@@ -101,12 +169,16 @@
   <div id="hud-gs"></div>
   <div id="tape-speed" class="tape mono"><div class="lbl">KIAS</div><div class="val" id="hud-ias">000</div><div class="unit">KT · <span id="hud-rpm">0</span> RPM</div></div>
   <div id="tape-alt" class="tape mono"><div class="lbl">ALTITUDE</div><div class="val" id="hud-alt">00000</div><div class="unit">FT · BARO 1014</div></div>
-  <div id="hud-hdg-bar" class="mono">HDG <b id="hud-hdg">090</b>° &nbsp;·&nbsp; VSI <span id="hud-vsi">+0</span> FPM</div>
+  <div id="hud-hdg-bar" class="mono"><div id="hud-compass">06&nbsp; 07&nbsp; 08&nbsp; <b>E</b>&nbsp; 10&nbsp; 11&nbsp; 12</div>HDG <b id="hud-hdg">090</b>° &nbsp;·&nbsp; VSI <span id="hud-vsi">+0</span> FPM</div>
   <div id="hud-vsi-box" class="mono">WIND <span id="hud-wind">120°/12KT</span><br><span id="hud-stab">STAB ON</span></div>
-  <div id="hud-sortie-bar"><div class="sname" id="hud-sortie">SORTIE 1</div><div id="hud-objective"></div></div>
+  <div id="hud-stage" class="hbox"><div class="ttl"><span id="hud-stage-name">SORTIE 1</span><span class="r" id="hud-stage-trim">TRIM 100%</span></div><div class="stagebar"><i id="hud-stage-fill" style="width:33%"></i></div><div id="hud-stage-rows"></div><div class="emerg" id="hud-stage-banner" style="display:none"></div></div>
+  <div id="hud-advisor" class="hbox"><div class="ttl" id="hud-advisor-title">SORTIE ADVISOR</div><div class="adv" id="hud-advisor-text"></div></div>
+  <div id="hud-touchdown" class="hbox"><div class="ttl">TOUCHDOWN <span class="grade" id="hud-td-grade">—</span></div><div class="note" id="hud-td-note"></div><div class="tdgrid"><div><span>SINK RATE</span><b id="hud-td-sink">—</b></div><div><span>CENTERLINE</span><b id="hud-td-center">—</b></div><div><span>STOP ROLLOUT</span><b id="hud-td-roll">—</b></div><div><span>AIRSPEED</span><b id="hud-td-kt">—</b></div></div></div>
+  <div id="hud-nav" class="hbox"><div class="ttl">MISTRAL NAV &amp; ILS <span class="r" id="hud-nav-mode">CHASE [V]</span></div><canvas id="navmap" width="230" height="118"></canvas><div class="navrow"><span>RUNWAY</span><b id="hud-nav-rwy">RWY 09 (090°)</b></div><div class="navrow"><span>ILS / PAPI</span><b id="hud-nav-ils">—</b></div><div class="navrow"><span>WIND</span><b id="hud-nav-wind">120° / 12KT</b></div><div class="navrow"><span>MIXTURE</span><b id="hud-nav-mix">AUTO CRUISE</b></div><div class="navrow"><span>AIRFRAME</span><b id="hud-nav-air">100% OK</b></div><div class="navbtns"><span>Cam [V]</span><span>Mix [M]</span><span>Flap [F]</span><span>Gear [G]</span><span>Hangar</span></div></div>
   <div id="hud-warnings"></div>
   <div id="hud-bottom">
-    <canvas id="minimap" width="190" height="150"></canvas>
+    <div id="hud-atc"><div class="ttl" id="hud-atc-title">TOWER · BELLAVISTA ATC (118.75 MHz)</div><div class="msg" id="hud-atc-msg"></div></div>
+    <canvas id="hud-gauges" width="420" height="64"></canvas>
     <div class="chip mono"><div class="lbl">TRIM / FLAPS / GEAR</div><span id="hud-trim">+0.0</span> · <span id="hud-flaps">0°</span> · <span id="hud-gear">DOWN</span></div>
     <div class="chip mono"><div class="lbl">FUEL · ENDURANCE</div><span id="hud-fuel">110 GAL</span> · <span id="hud-endurance">—</span></div>
     <div class="chip mono"><div class="lbl">CHT · AIRFRAME</div><span id="hud-cht">150°C</span> · <span id="hud-damage">AIRFRAME 100%</span></div>
@@ -137,31 +209,56 @@
 </div>
 
 <div id="hangar">
-  <h3>SECTIONAL MAP — ADRIATIC 12 × 12 KM</h3>
-  <svg viewBox="0 0 400 300" role="img" aria-label="Sectional aviation map of the Adriatic coast">
-    <rect x="0" y="0" width="400" height="300" fill="#0a1410"/>
-    <path d="M250,0 C230,60 270,120 245,180 C230,230 260,270 245,300" stroke="#3fd4c0" stroke-width="3" fill="none"/>
-    <path d="M60,40 L140,90 L110,190 L40,150 Z" stroke="#c98a2e" stroke-width="1.5" fill="none"/>
-    <text x="70" y="120" fill="#c98a2e" font-size="11">MONTE CORVO 2040 FT</text>
-    <circle cx="150" cy="150" r="5" fill="#ffd24a"/><text x="160" y="154" fill="#e8f2ff" font-size="11">BELLAVISTA 09/27 ILS</text>
-    <circle cx="330" cy="70" r="5" fill="#7ee2a0"/><text x="300" y="60" fill="#e8f2ff" font-size="11">ISOLA BIANCA 14</text>
-    <circle cx="315" cy="225" r="5" fill="#7ee2a0"/><text x="290" y="245" fill="#e8f2ff" font-size="11">CALA MARINA 32W</text>
-    <circle cx="80" cy="240" r="5" fill="#7ee2a0"/><text x="90" y="244" fill="#e8f2ff" font-size="11">CORVO 21</text>
-    <circle cx="360" cy="265" r="4" fill="#ff6a55"/><text x="330" y="285" fill="#e8f2ff" font-size="11">FARO STN</text>
-    <line x1="150" y1="150" x2="330" y2="70" stroke="#ffd24a" stroke-width="1" stroke-dasharray="5 4"/>
-    <line x1="150" y1="150" x2="315" y2="225" stroke="#ffd24a" stroke-width="1" stroke-dasharray="5 4"/>
-    <line x1="150" y1="150" x2="80" y2="240" stroke="#ffd24a" stroke-width="1" stroke-dasharray="5 4"/>
-    <text x="12" y="290" fill="#7ee2a0" font-size="10">VFR SECTIONAL · CONTOURS · AIRWAYS · BARO 1014 HPA</text>
-  </svg>
-  <div class="sortie-list">
-    1 Bellavista Coastal Checkride · 2 Cala Marina Seaplane Shuttle · 3 Isola Bianca Cliffside Cargo ·
-    4 Mistral 24 KT Crosswind · 5 Low-Ceiling ILS Recovery · 6 Engine #2 Overheat &amp; Fuel Diversion ·
-    7 Monte Corvo Ridge Medevac · 8 Adriatic Dusk Grand Circuit
+  <h3>FLEET HANGAR &amp; CAREER DISPATCH <span class="flybtn">FLY SORTIE [ENTER]</span></h3>
+  <div class="dstat">
+    <div><b>8</b><span>SORTIES</span></div>
+    <div><b>3</b><span>AIRFRAMES</span></div>
+    <div><b>6/8</b><span>GOLD MEDALS</span></div>
+    <div><b>75%</b><span>CAREER</span></div>
   </div>
-  <div class="debrief-card">
-    <b>LAST LANDING TELEMETRY</b><br>
-    TOUCHDOWN -138 FPM · CENTERLINE 0.6 M · CRAB 1.2° · 86 KT<br>
-    <b>PRECISION LANDING · 96/100</b>
+  <div class="acards">
+    <div class="acard sel"><b>✈ MC-18 ALBATRO</b><div>Twin-Amphibious · 165 KT</div></div>
+    <div class="acard"><b>✈ SR-4 LIBECCIO</b><div>Touring &amp; Aerobatic · 205 KT</div></div>
+    <div class="acard"><b>✈ LJ-22 SIROCCO</b><div>Coastal Patrol Jet · 320 KT</div></div>
+  </div>
+  <div class="dsec">ALL 8 · SORTIE DISPATCH</div>
+  <div class="dsort">
+    <div><b>01</b> · BELLAVISTA CHECKRIDE <span class="medal">★ GOLD</span><br><span style="color:#9fc4d8">Coastal circuit, PAPI landing RWY 09</span></div>
+    <div><b>02</b> · CALA MARINA SHUTTLE <span class="medal">★ GOLD</span><br><span style="color:#9fc4d8">Water landing, gear UP, bay 32W</span></div>
+    <div><b>03</b> · ISOLA BIANCA CARGO <span class="medal">★ GOLD</span><br><span style="color:#9fc4d8">Short-field full-flaps RWY 14</span></div>
+    <div><b>04</b> · MISTRAL 24KT X-WIND <span class="medal">★ GOLD</span><br><span style="color:#9fc4d8">Crab-and-decrab landing RWY 09</span></div>
+    <div><b>05</b> · LOW-CEILING ILS <span class="medal">★ GOLD</span><br><span style="color:#9fc4d8">ILS needles through sea fog, RWY 09</span></div>
+    <div><b>06</b> · ENGINE #2 DIVERT <span class="medal">★ GOLD</span><br><span style="color:#9fc4d8">Overheat + fuel short, divert Bianca</span></div>
+    <div><b>07</b> · MONTE CORVO MEDEVAC <span class="medal silver">★ SILVER</span><br><span style="color:#9fc4d8">High-altitude delivery, RWY 21</span></div>
+    <div><b>08</b> · DUSK GRAND CIRCUIT <span class="medal silver">★ SILVER</span><br><span style="color:#9fc4d8">Bianca · Marina · Corvo · ILS 09</span></div>
+  </div>
+  <div class="dsec">SECTIONAL MAP — ADRIATIC 12 × 12 KM</div>
+  <svg viewBox="0 0 400 130" role="img" aria-label="Sectional aviation map of the Adriatic coast">
+    <rect x="0" y="0" width="400" height="130" fill="#0a1410"/>
+    <path d="M250,0 C230,26 270,52 245,78 C230,100 260,117 245,130" stroke="#3fd4c0" stroke-width="3" fill="none"/>
+    <path d="M60,17 L140,39 L110,82 L40,65 Z" stroke="#c98a2e" stroke-width="1.5" fill="none"/>
+    <text x="70" y="52" fill="#c98a2e" font-size="11">MONTE CORVO 2040 FT</text>
+    <circle cx="150" cy="65" r="5" fill="#ffd24a"/><text x="160" y="69" fill="#e8f2ff" font-size="11">BELLAVISTA 09/27 ILS</text>
+    <circle cx="330" cy="30" r="5" fill="#7ee2a0"/><text x="300" y="26" fill="#e8f2ff" font-size="11">ISOLA BIANCA 14</text>
+    <circle cx="315" cy="98" r="5" fill="#7ee2a0"/><text x="290" y="108" fill="#e8f2ff" font-size="11">CALA MARINA 32W</text>
+    <circle cx="80" cy="104" r="5" fill="#7ee2a0"/><text x="90" y="108" fill="#e8f2ff" font-size="11">CORVO 21</text>
+    <circle cx="360" cy="115" r="4" fill="#ff6a55"/><text x="330" y="124" fill="#e8f2ff" font-size="11">FARO STN</text>
+    <line x1="150" y1="65" x2="330" y2="30" stroke="#ffd24a" stroke-width="1" stroke-dasharray="5 4"/>
+    <line x1="150" y1="65" x2="315" y2="98" stroke="#ffd24a" stroke-width="1" stroke-dasharray="5 4"/>
+    <line x1="150" y1="65" x2="80" y2="104" stroke="#ffd24a" stroke-width="1" stroke-dasharray="5 4"/>
+    <text x="12" y="126" fill="#7ee2a0" font-size="10">VFR SECTIONAL · CONTOURS · AIRWAYS · BARO 1014 HPA</text>
+  </svg>
+  <div class="barwrap"><div class="blbl"><span>WING FUEL TANKS</span><b>68% (95 GAL · 42 MIN)</b></div><div class="bar"><i style="width:68%"></i></div></div>
+  <div class="barwrap"><div class="blbl"><span>AIRMAIL &amp; MEDEVAC CARGO</span><b>380 KG</b></div><div class="bar"><i style="width:52%"></i></div></div>
+  <div class="dperf">
+    <div><b>1864 FPM</b><span>CLIMB</span></div>
+    <div><b>60 KT</b><span>STALL Vso</span></div>
+    <div><b>439 M</b><span>STOL ROLL</span></div>
+  </div>
+  <div class="crew">
+    <div><b>01 · CAPT. LINNEA HOLM</b><span class="pct">75%</span><br>18.4h · 6/8 GOLD · Best -108 FPM</div>
+    <div><b>02 · F/O MATEO VARGAS</b><span class="pct">50%</span><br>11.2h · 4/8 GOLD · Best -134 FPM</div>
+    <div><b>03 · CHIEF K. SATO</b><span class="pct">100%</span><br>29.5h · 8/8 ACE · Best -89 FPM</div>
   </div>
 </div>
 

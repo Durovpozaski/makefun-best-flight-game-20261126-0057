@@ -81,6 +81,36 @@ export function buildTerrain(scene, textures) {
   const mesh = new THREE.Mesh(geo, mat);
   mesh.receiveShadow = true;
   scene.add(mesh);
+  // Snow-capped peaks (the reference's alpine backdrop): white cones
+  // sunk into Monte Corvo and the western ridge so only the cap shows.
+  const snowMat = new THREE.MeshStandardMaterial({ color: 0xf4f6fa, roughness: 0.92, metalness: 0.0 });
+  const snowCaps = [
+    { x: -4300, z: -3800, r: 680, h: 240 }, // Monte Corvo summit
+    { x: -3500, z: -1500, r: 420, h: 150 },
+    { x: -5000, z: 800, r: 460, h: 160 },
+    { x: -2500, z: -5500, r: 380, h: 140 },
+    { x: 3500, z: -2500, r: 300, h: 90 },   // Isola Bianca top
+  ];
+  for (const c of snowCaps) {
+    const g = terrainHeight(c.x, c.z);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(c.r, c.h, 12), snowMat);
+    cap.position.set(c.x, g + c.h * 0.22, c.z);
+    scene.add(cap);
+  }
+  // Meadow patches: dark-green valley floors breaking up the dry grass,
+  // so the lowlands read as lush green valleys from the air.
+  const meadowMat = new THREE.MeshStandardMaterial({ color: 0x3f6b2e, roughness: 1.0, metalness: 0.0 });
+  let mseed = 1234567;
+  const mrand = () => { mseed = (mseed * 1664525 + 1013904223) >>> 0; return mseed / 4294967296; };
+  for (let i = 0; i < 36; i++) {
+    const x = -4800 + mrand() * 4200, z = -4200 + mrand() * 8400;
+    const g = terrainHeight(x, z);
+    if (g < 14 || g > 95 || x > coastlineX(z) - 200) continue;
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(120 + mrand() * 160, 14), meadowMat);
+    disc.rotation.x = -Math.PI / 2;
+    disc.position.set(x, g + 0.6, z);
+    scene.add(disc);
+  }
   // Cliff band: a steep limestone wall hugging the coastline
   const cliffMat = new THREE.MeshStandardMaterial({
     map: textures.cliff.map, bumpMap: textures.cliff.bumpMap, bumpScale: 1.2,

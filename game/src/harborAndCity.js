@@ -155,3 +155,85 @@ export function buildLighthouse(scene) {
     },
   };
 }
+
+// CALDERA BRIDGE: a red suspension bridge across the southern mouth of
+// Cala Marina bay (z = 4200, clear of the 32W water runway), the
+// reference's signature landmark. Two towers, catenary main cables,
+// suspenders, deck edge lights. The cover shot flies west along it
+// into the setting sun.
+export function buildBridge(scene) {
+  const group = new THREE.Group();
+  const red = new THREE.MeshStandardMaterial({ color: 0xc23a22, roughness: 0.55, metalness: 0.35 });
+  const deckMat = new THREE.MeshStandardMaterial({ color: 0xa83420, roughness: 0.7, metalness: 0.3 });
+  const concrete = new THREE.MeshStandardMaterial({ color: 0x9a9a94, roughness: 0.9 });
+  const deckY = 22, z = 4200, x0 = 1400, x1 = 3600;
+  const towerX = [2000, 3000];
+  // deck
+  const deck = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, 3, 16), deckMat);
+  deck.position.set((x0 + x1) / 2, deckY, z);
+  group.add(deck);
+  // towers + crossbeams + piers
+  for (const tx of towerX) {
+    for (const dz of [-9, 9]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(6, 92, 6), red);
+      leg.position.set(tx, 46, z + dz);
+      group.add(leg);
+      const pier = new THREE.Mesh(new THREE.CylinderGeometry(9, 11, 10, 10), concrete);
+      pier.position.set(tx, -3, z + dz);
+      group.add(pier);
+    }
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(4, 5, 26), red);
+    beam.position.set(tx, 86, z);
+    group.add(beam);
+  }
+  // main cables: catenary sag between the tower tops, side spans sloping
+  // down to the anchor blocks at both ends
+  const cablePts = [];
+  const towerTop = 88;
+  cablePts.push(new THREE.Vector3(x0, deckY + 3, z - 7));
+  cablePts.push(new THREE.Vector3(towerX[0], towerTop, z - 7));
+  for (let i = 1; i <= 8; i++) {
+    const t = i / 8;
+    const x = towerX[0] + (towerX[1] - towerX[0]) * t;
+    const sag = towerTop - (towerTop - (deckY + 4)) * 4 * t * (1 - t);
+    cablePts.push(new THREE.Vector3(x, sag, z - 7));
+  }
+  cablePts.push(new THREE.Vector3(towerX[1], towerTop, z - 7));
+  cablePts.push(new THREE.Vector3(x1, deckY + 3, z - 7));
+  for (const dz of [-7, 7]) {
+    const pts = cablePts.map((p) => new THREE.Vector3(p.x, p.y, z + dz));
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 64, 1.4, 6), red);
+    group.add(tube);
+  }
+  // suspenders on the main span
+  const suspMat = new THREE.MeshStandardMaterial({ color: 0x8a8f94, roughness: 0.6, metalness: 0.5 });
+  for (let x = towerX[0] + 60; x < towerX[1]; x += 60) {
+    const t = (x - towerX[0]) / (towerX[1] - towerX[0]);
+    const cableY = towerTop - (towerTop - (deckY + 4)) * 4 * t * (1 - t);
+    const len = cableY - deckY;
+    for (const dz of [-7, 7]) {
+      const s = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, len, 6), suspMat);
+      s.position.set(x, deckY + len / 2, z + dz);
+      group.add(s);
+    }
+  }
+  // deck edge lights (emissive, read at dusk)
+  const lampGeo = new THREE.SphereGeometry(0.7, 6, 6);
+  const lampMat = new THREE.MeshBasicMaterial({ color: 0xffe6a0 });
+  for (let x = x0 + 40; x <= x1 - 40; x += 100) {
+    for (const dz of [-8, 8]) {
+      const l = new THREE.Mesh(lampGeo, lampMat);
+      l.position.set(x, deckY + 2.4, z + dz);
+      group.add(l);
+    }
+  }
+  // anchor blocks at both ends
+  for (const ax of [x0 - 20, x1 + 20]) {
+    const a = new THREE.Mesh(new THREE.BoxGeometry(36, 14, 30), concrete);
+    a.position.set(ax, 7, z);
+    group.add(a);
+  }
+  scene.add(group);
+  return group;
+}

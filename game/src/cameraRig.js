@@ -38,7 +38,7 @@ export function updateCamera(rig, S, aircraft, dt) {
   if (rig.mode === 'cockpit') {
     const eye = S.pos.clone().addScaledVector(fwd, 0.3).addScaledVector(up, 0.7);
     cam.position.copy(eye);
-    const look = S.pos.clone().addScaledVector(fwd, 60).addScaledVector(up, -6);
+    const look = S.pos.clone().addScaledVector(fwd, 60).addScaledVector(up, 1.5);
     cam.lookAt(look);
     cam.up.copy(up);
     const sh = shakeOffset(rig);

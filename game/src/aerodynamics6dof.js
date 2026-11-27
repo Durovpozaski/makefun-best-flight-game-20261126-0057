@@ -274,6 +274,8 @@ export function centerlineOffsetM(S) {
   const f = S.airfield;
   const hd = degToRad(f.headingDeg);
   const dx = S.pos.x - f.x, dz = S.pos.z - f.z;
-  // perpendicular distance from runway centreline
-  return Math.abs(-Math.sin(hd) * dx + Math.cos(hd) * dz);
+  // perpendicular distance from runway centreline: the runway
+  // direction is (sin hd, cos hd), so cross-track is the dot with
+  // the perpendicular (cos hd, -sin hd)
+  return Math.abs(Math.cos(hd) * dx - Math.sin(hd) * dz);
 }

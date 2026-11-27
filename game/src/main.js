@@ -6,8 +6,8 @@ import { WORLD, AIRCRAFT_SPECS, FLIGHT, clamp, degToRad, ktToMs } from './config
 import * as Textures from './proceduralTextures.js';
 import { buildTerrain, terrainHeight, isWater } from './terrainAdriatic.js';
 import { buildWater } from './waterShader.js';
-import { createWeather, buildSky, buildClouds, buildRain, buildLightning, windVectorAt } from './atmosphereWeather.js';
-import { buildCity, buildLighthouse } from './harborAndCity.js';
+import { createWeather, buildSky, buildClouds, buildRain, buildLightning, applySkyMood, windVectorAt } from './atmosphereWeather.js';
+import { buildCity, buildLighthouse, buildBridge } from './harborAndCity.js';
 import { buildAirfields, buildSeaplaneBasin } from './airfieldsAndSeaplane.js';
 import { buildTraffic, buildShips, buildBirds } from './trafficAndShips.js';
 import { buildAircraft } from './aircraftGeometry.js';
@@ -53,6 +53,7 @@ const rain = buildRain(scene);
 const lightning = buildLightning(scene);
 buildCity(scene, textures);
 const lighthouse = buildLighthouse(scene);
+buildBridge(scene);
 const airfields = buildAirfields(scene, textures);
 const basin = buildSeaplaneBasin(scene);
 const traffic = buildTraffic(scene);
@@ -131,6 +132,7 @@ function resetFlight(sortieId, type, fuelGal, startOverride) {
   weather.stormIntensity = sortie.storm ? 0.85 : 0;
   if (sortie.fog) scene.fog.near = 900; else scene.fog.near = 3500;
   if (sortie.id === 6) { F.chtC = [238, 251]; F.fuelGal = 26; S.fuelGal = 26; }
+  applySkyMood(skyLights, sortie.storm ? 'storm-night' : sortie.id === 5 ? 'dusk' : 'golden');
   spawnAircraft(type);
   debriefShown = false;
   hideDebrief();
@@ -154,39 +156,48 @@ function resetFlight(sortieId, type, fuelGal, startOverride) {
 
 function applyShot(name) {
   if (name === 'cover') {
-    // Low pass over the harbor into the setting sun (beats the RWY 27
-    // approach candidate: no flat brown terrain in frame, sun dead
-    // ahead, golden sea glitter, ferry + marina + cliff city on the
-    // horizon, formation wingmen, birds). Gear up, clean config, 118 kt.
-    // ILS reads OUT OF RANGE (the ILS serves RWY 09); the cover sells
-    // the vista, not the approach.
+    // Bridge crossing at sunset: west along Cala Marina's red
+    // suspension bridge (z 4200) into the setting sun — deck lights,
+    // towers and catenary cables ahead, ferry + marina + cliff city on
+    // the horizon, formation wingmen, birds. Gear up, clean config,
+    // 120 kt. ILS reads OUT OF RANGE (the ILS serves RWY 09); the
+    // cover sells the vista, not the approach.
     resetFlight(1, 'albatro', 82, {
-      pos: new THREE.Vector3(2700, 80, 1550), hdg: 247, pitch: -1, roll: 0,
-      kt: 118, vsiFpm: 0, throttle: 0.6, flapStage: 0, gearDown: false,
+      pos: new THREE.Vector3(3700, 55, 4200), hdg: 270, pitch: -1, roll: 0,
+      kt: 120, vsiFpm: 0, throttle: 0.6, flapStage: 0, gearDown: false,
     });
+    applySkyMood(skyLights, 'sunset');
     rig.mode = 'chase';
   } else if (name === 'cockpit') {
     resetFlight(5, 'albatro', 70, {
-      pos: new THREE.Vector3(-2400, 107, 8), hdg: 90, pitch: -3, roll: 0,
-      kt: 105, vsiFpm: -480, throttle: 0.5, flapStage: 1, gearDown: true,
+      pos: new THREE.Vector3(-2400, 107, 0), hdg: 90, pitch: -2, roll: 0,
+      kt: 105, vsiFpm: -450, throttle: 0.55, flapStage: 1, gearDown: true,
     });
+    applySkyMood(skyLights, 'dusk');
     rig.mode = 'cockpit';
   } else if (name === 'storm') {
+    // Night storm landing: short final RWY 09 at Highcrest Mesa,
+    // 84 KT, flaps 35, gear down, storm-night sky, bigger bolts.
+    // 1.2 km out at 60 m so the runway lights fill the lower frame.
     resetFlight(6, 'albatro', 7, {
-      pos: new THREE.Vector3(3100, 480, 1600), hdg: 295, pitch: -1, roll: -6,
-      kt: 118, vsiFpm: -120, throttle: 0.92, flapStage: 0, gearDown: false,
+      pos: new THREE.Vector3(-2000, 90, 0), hdg: 90, pitch: -2, roll: 0,
+      kt: 105, vsiFpm: -450, throttle: 0.62, flapStage: 2, gearDown: true,
     });
     weather.windKt = 24; weather.windDirDeg = 300;
     F.chtC = [226, 252]; F.fuelGal = 7; S.fuelGal = 7;
+    applySkyMood(skyLights, 'storm-night');
+    lightning.group.scale.setScalar(1.6);
     rig.mode = 'chase';
   } else if (name === 'hangar') {
     showMenu(true);
     const menuEl = document.getElementById('menu');
-    menuEl.style.background = 'linear-gradient(90deg, rgba(10,14,22,0.92) 0%, rgba(10,14,22,0.45) 40%, rgba(10,14,22,0.05) 62%, rgba(10,14,22,0) 100%)';
+    // narrow panels + fast-fading gradient so the parked 3D Albatro
+    // stays visible in the gap between menu and dispatch board
+    menuEl.style.background = 'linear-gradient(90deg, rgba(10,14,22,0.92) 0%, rgba(10,14,22,0.45) 30%, rgba(10,14,22,0.05) 45%, rgba(10,14,22,0) 55%)';
     const panelEl = menuEl.querySelector('.panel');
-    panelEl.style.maxWidth = '480px';
+    panelEl.style.maxWidth = '420px';
     panelEl.style.margin = '4vh 0 0 3vw';
-    document.getElementById('hangar').style.width = '380px';
+    document.getElementById('hangar').style.width = '520px';
     return;
   } else {
     showMenu(false);
@@ -374,7 +385,7 @@ function frame(timeMs) {
     updateAircraftVisual(dt, time);
     updateCamera(rig, S, aircraft, dt);
     if (cockpit && rig.mode === 'cockpit') cockpit.update(S, F, ils, dt, time);
-    hud.update(S, F, D, ils, sortie, weather);
+    hud.update(S, F, D, ils, sortie, weather, rig.mode);
   } else if (mode === 'crash' && S) {
     orbitCrashCamera(rig, S, time, dt);
     if (crashSmoke) { crashSmoke.rotation.y += dt * 0.2; crashSmoke.position.y += dt * 1.2; }

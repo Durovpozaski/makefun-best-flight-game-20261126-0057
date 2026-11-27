@@ -92,6 +92,23 @@ export function buildAlbatro(textures) {
     prop.position.set(s * 3.4, 1.15, 2.35); g.add(prop);
     props.push(prop);
   }
+  // livery: red cheatline along the fuselage, red wingtip bands, and
+  // twin exhaust glow cones behind the nacelles (opacity driven by
+  // throttle in main.js, so takeoff shows a fire glow like the reference)
+  const cheat = new THREE.MeshStandardMaterial({ color: 0xc23a22, roughness: 0.4, metalness: 0.4 });
+  for (const s of [-1, 1]) {
+    const line = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 8.4), cheat);
+    line.position.set(s * 1.02, 0.12, 0.2); g.add(line);
+    const tip = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.32, 2.4), cheat);
+    tip.position.set(s * 7.45, 1.15, 0.4); g.add(tip);
+  }
+  const exhaustMat = new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false });
+  let exhaust = null;
+  for (const s of [-1, 1]) {
+    const cone = new THREE.Mesh(new THREE.ConeGeometry(0.4, 2.0, 10), exhaustMat);
+    cone.rotation.x = -Math.PI / 2; cone.position.set(s * 3.4, 1.15, -1.9); g.add(cone);
+    if (!exhaust) exhaust = cone;
+  }
   // retractable tricycle gear
   const gear = new THREE.Group();
   const mkLeg = (x, z, len) => {
@@ -108,7 +125,7 @@ export function buildAlbatro(textures) {
   g.traverse((o) => { if (o.isMesh) { o.castShadow = true; } });
   return {
     group: g, props, aileronL, aileronR, flapL, flapR, elevator, rudder, gear,
-    lights, spanM: 15.5, lengthM: 9.6,
+    lights, exhaust, spanM: 15.5, lengthM: 9.6,
   };
 }
 
