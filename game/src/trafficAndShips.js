@@ -102,11 +102,17 @@ export function buildBirds(scene) {
   const flocks = [
     { cx: 2850, cy: 145, cz: 1800, n: 24, rMax: 120, hSpan: 30 },
     { cx: 2600, cy: 155, cz: 1400, n: 10, rMax: 110, hSpan: 25 },
+    // STORM flock: 12 big birds on the storm flight line, 140 m above
+    // the hero and 150 m left of it, so the squall sky reads alive
+    // without anything clipping the aircraft or the lens. It sits
+    // 540 m above the cover hero, so it stays out of the cover frame.
+    { cx: 2720, cy: 620, cz: 1588, n: 12, rMax: 110, hSpan: 30, scale: 1.8 },
   ];
   let idx = 0;
   for (const f of flocks) {
     for (let i = 0; i < f.n; i++, idx++) {
       const b = new THREE.Group();
+      if (f.scale) b.scale.setScalar(f.scale);
       const wgeo = new THREE.BoxGeometry(3.4, 0.08, 0.9);
       const wl = new THREE.Mesh(wgeo, wingMat);
       wl.position.x = -1.7;
@@ -176,8 +182,9 @@ function makeFerry(color, scale = 1, white = false) {
   return g;
 }
 
-function makeSailboat() {
+function makeSailboat(scale = 1) {
   const g = new THREE.Group();
+  g.scale.setScalar(scale);
   const hull = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.7, 9, 8),
     new THREE.MeshStandardMaterial({ color: 0xf8f8f8, roughness: 0.5 }));
   hull.rotation.x = Math.PI / 2; hull.scale.y = 1; hull.position.y = 0.8; g.add(hull);
@@ -296,6 +303,40 @@ export function buildShips(scene) {
   const speedboat = makeSpeedboat();
   scene.add(speedboat);
   ships.push({ mesh: speedboat, kind: 'speed', x: 2435, z: 1565, heading: 3.54, speed: 16 });
+  // STORM boats: the squall cover needs the sea alive too — a big white
+  // ferry + a blue ferry + three sailboats + a crossing speedboat, all
+  // placed on the STORM flight line ahead of the storm spawn (3100, 480,
+  // 1600, hdg 295; forward = -x/-z), so they read in the storm frame
+  // from the chase camera. All sit in open water (x > coastlineX(z)).
+  // Checked against the cover chase FOV (47 deg horizontal / 31 deg
+  // vertical from the cover spawn): none of them enters the cover frame.
+  // NOTE: at the storm hero's 480 m altitude the chase camera only
+  // sees sea more than ~620 m ahead (the frame bottom is 38 deg down),
+  // so storm boats sit 700-950 m out, in the visible sea band just
+  // before the coast (~1000 m ahead). Boats placed closer fall below
+  // the frame and are invisible.
+  const stormFerries = [
+    { x: 2511, z: 1159, heading: 2.70, speed: 2, scale: 1.5, white: true },
+    { x: 2370, z: 1038, heading: 2.70, speed: 5, scale: 1.2, white: false },
+  ];
+  for (const f of stormFerries) {
+    const m = makeFerry(0x1d4e89, f.scale, f.white);
+    scene.add(m);
+    ships.push({ mesh: m, x: f.x, z: f.z, heading: f.heading, speed: f.speed, kind: 'ferry' });
+  }
+  const stormSails = [
+    { x: 2449, z: 1197, heading: 1.2, speed: 3 },
+    { x: 2372, z: 1149, heading: 2.4, speed: 4 },
+    { x: 2264, z: 1144, heading: 0.9, speed: 3 },
+  ];
+  for (const sa of stormSails) {
+    const m = makeSailboat(2); // 2x: 24 m mast reads at 700-950 m
+    scene.add(m);
+    ships.push({ mesh: m, kind: 'sail', ...sa });
+  }
+  const stormSpeed = makeSpeedboat();
+  scene.add(stormSpeed);
+  ships.push({ mesh: stormSpeed, kind: 'speed', x: 2517, z: 1195, heading: 5.9, speed: 16 });
   return {
     ships,
     update(dt, time) {

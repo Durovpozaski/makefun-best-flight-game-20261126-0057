@@ -190,6 +190,40 @@ export function buildClouds(scene) {
     group.add(cluster);
     puffs.push(cluster);
   }
+  // STORM hero clusters: towering dark squall banks strung along the
+  // storm flight line ahead of the storm spawn (3100, 480, 1600, hdg
+  // 295), so the storm cover reads as a squall instead of a sunset
+  // with drizzle. They are storm-flagged, so they ONLY render while
+  // weather.storm is true — the cover / cockpit / hangar shots never
+  // see them. Positions are (ahead, lateral) off the storm spawn:
+  // 824m/+112, 1383m/+126, 658m/+465, 1598m/-360, 516m/-75, 683m/-429.
+  const stormSpots = [
+    { x: 2400, y: 780, z: 1150, r: 260, n: 9 },
+    { x: 1900, y: 950, z: 900, r: 280, n: 10 },
+    { x: 2700, y: 800, z: 900, r: 240, n: 8 },
+    { x: 1500, y: 1050, z: 1250, r: 300, n: 9 },
+    { x: 2600, y: 700, z: 1450, r: 230, n: 8 },
+    { x: 2300, y: 750, z: 1700, r: 260, n: 9 },
+  ];
+  for (let i = 0; i < stormSpots.length; i++) {
+    const sp = stormSpots[i];
+    const cluster = new THREE.Group();
+    for (let j = 0; j < sp.n; j++) {
+      const r = sp.r * (0.42 + ((i * 31 + j * 47) % 45) / 100);
+      const puff = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: cloudTex, color: j % 3 === 2 ? 0x3a3a48 : 0x55555f,
+        transparent: true, opacity: 0.9, depthWrite: false,
+      }));
+      puff.material.rotation = (i * 0.9 + j * 0.6) % Math.PI;
+      puff.position.set((j - sp.n / 2) * r * 1.15, ((j * 37) % 70) - 25, ((j * 53) % 120) - 60);
+      puff.scale.set(r * 2.4, r * 1.15, 1);
+      cluster.add(puff);
+    }
+    cluster.position.set(sp.x, sp.y, sp.z);
+    cluster.userData.storm = true;
+    group.add(cluster);
+    puffs.push(cluster);
+  }
   scene.add(group);
   return {
     group, puffs,
@@ -207,7 +241,7 @@ export function buildRain(scene) {
   // Slanted streaks (LineSegments), not dots: each drop is a short line
   // aligned with its velocity, so the rain visibly leans with the wind —
   // the harder the Mistral blows, the harder the slant.
-  const COUNT = 900;
+  const COUNT = 1600; // denser squall rain on the storm cover
   const pos = new Float32Array(COUNT * 2 * 3);
   const drops = new Float32Array(COUNT * 3);
   for (let i = 0; i < COUNT; i++) {
@@ -228,7 +262,7 @@ export function buildRain(scene) {
       const active = weather.storm && weather.rain;
       lines.visible = active;
       if (!active) return;
-      mat.opacity = 0.5 * weather.stormIntensity;
+      mat.opacity = 0.62 * weather.stormIntensity;
       lines.position.set(aircraftPos.x, aircraftPos.y - 120, aircraftPos.z);
       const wind = windVectorAt(weather, aircraftPos.y);
       // streak tilt follows the live wind (exaggerated ~3x so 24 kt reads)
