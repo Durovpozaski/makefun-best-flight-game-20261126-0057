@@ -46,8 +46,8 @@ export function updateCamera(rig, S, aircraft, dt) {
     return;
   }
   // chase: spring-damped follow behind and above the tail
-  const dist = 16 + S.airspeedKt * 0.02;
-  const target = S.pos.clone().addScaledVector(fwd, -dist).addScaledVector(up, 4.2 + S.airspeedKt * 0.004);
+  const dist = 13 + S.airspeedKt * 0.015;
+  const target = S.pos.clone().addScaledVector(fwd, -dist).addScaledVector(up, 3.6 + S.airspeedKt * 0.004);
   target.y = Math.max(target.y, 4);
   const k = 1 - Math.exp(-dt * 4.5);
   rig.chasePos.lerp(target, k);

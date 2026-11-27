@@ -161,7 +161,7 @@ function applyShot(name) {
     // ILS reads OUT OF RANGE (the ILS serves RWY 09); the cover sells
     // the vista, not the approach.
     resetFlight(1, 'albatro', 82, {
-      pos: new THREE.Vector3(3200, 90, 1400), hdg: 247, pitch: -1, roll: 0,
+      pos: new THREE.Vector3(2700, 80, 1550), hdg: 247, pitch: -1, roll: 0,
       kt: 118, vsiFpm: 0, throttle: 0.6, flapStage: 0, gearDown: false,
     });
     rig.mode = 'chase';
@@ -332,7 +332,7 @@ function frame(timeMs) {
     const flashEl = document.getElementById('flash');
     if (flashEl) flashEl.style.opacity = String(flashLevel * 0.85);
   }
-  traffic.update(dt, time, S, shot === 'cover' && mode === 'fly');
+  traffic.update(dt, time, S, mode === 'fly');
   ships.update(dt, time);
   birds.update(dt, time);
   lighthouse.update(time);

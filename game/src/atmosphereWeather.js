@@ -54,11 +54,11 @@ export function buildSky(scene, renderer) {
   scene.add(new THREE.HemisphereLight(0x9db4d6, 0x8a6f4d, 0.85));
   // Soft eastern fill: lifts the camera-facing (backlit) side of the
   // aircraft on westbound shots without washing out the golden hour.
-  const fill = new THREE.DirectionalLight(0xffd9b0, 0.45);
+  const fill = new THREE.DirectionalLight(0xffd9b0, 0.6);
   fill.position.set(8000, 1500, -2000);
   scene.add(fill);
   const sunSprite = new THREE.Mesh(
-    new THREE.CircleGeometry(420, 32),
+    new THREE.CircleGeometry(520, 32),
     new THREE.MeshBasicMaterial({ color: 0xffe6b0, fog: false, transparent: true, opacity: 0.95 }),
   );
   sunSprite.position.set(-9200, 2600, 3900);
@@ -86,7 +86,7 @@ export function buildSky(scene, renderer) {
     fog: false, transparent: true, opacity: 0.9,
   }));
   flare.position.set(-9200, 2600, 3900);
-  flare.scale.set(3400, 3400, 1);
+  flare.scale.set(4400, 4400, 1);
   scene.add(flare);
   const streakCanvas = document.createElement('canvas');
   streakCanvas.width = 256; streakCanvas.height = 64;
@@ -99,19 +99,35 @@ export function buildSky(scene, renderer) {
   const streakTex = new THREE.CanvasTexture(streakCanvas);
   const streak = new THREE.Sprite(new THREE.SpriteMaterial({
     map: streakTex, blending: THREE.AdditiveBlending, depthWrite: false,
-    fog: false, transparent: true, opacity: 0.5,
+    fog: false, transparent: true, opacity: 0.65,
   }));
   streak.position.set(-9200, 2600, 3900);
-  streak.scale.set(6500, 480, 1);
+  streak.scale.set(8000, 560, 1);
   scene.add(streak);
   return { sky, sun, sunSprite, flare, streak };
 }
 
+function makeCloudTexture() {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+  const g = c.getContext('2d');
+  const blobs = [[64, 78, 52], [120, 62, 62], [180, 80, 54], [150, 92, 44], [96, 94, 40], [210, 66, 36]];
+  for (const [x, y, r] of blobs) {
+    const grad = g.createRadialGradient(x, y, 0, x, y, r);
+    grad.addColorStop(0, 'rgba(255,255,255,0.85)');
+    grad.addColorStop(0.6, 'rgba(255,255,255,0.45)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = grad;
+    g.fillRect(0, 0, 256, 128);
+  }
+  return new THREE.CanvasTexture(c);
+}
+
 export function buildClouds(scene) {
-  // Layered cumulus: clusters of soft golden-lit billboards
+  // Layered cumulus: clusters of soft billboards. Each puff is a sprite
+  // with a canvas-drawn irregular cloud texture — smooth shaded spheres
+  // read as beige balloons, soft alpha blobs read as clouds.
   const group = new THREE.Group();
-  const cloudMat = new THREE.MeshLambertMaterial({ color: 0xfff8ec, transparent: true, opacity: 0.8, emissive: 0x6a4a28, emissiveIntensity: 0.1 });
-  const darkMat = new THREE.MeshLambertMaterial({ color: 0x8f8578, transparent: true, opacity: 0.85, emissive: 0x1a1a22, emissiveIntensity: 0.4 });
+  const cloudTex = makeCloudTexture();
   const puffs = [];
   for (let i = 0; i < 30; i++) {
     const isStorm = i >= 24;
@@ -119,9 +135,13 @@ export function buildClouds(scene) {
     const n = 4 + (i % 4);
     for (let j = 0; j < n; j++) {
       const r = 90 + ((i * 37 + j * 53) % 160);
-      const puff = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), isStorm ? darkMat : cloudMat);
+      const puff = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: cloudTex, color: isStorm ? 0x5a5a66 : 0xfff6e8,
+        transparent: true, opacity: isStorm ? 0.85 : 0.75, depthWrite: false,
+      }));
+      puff.material.rotation = (i * 1.3 + j * 0.7) % Math.PI;
       puff.position.set((j - n / 2) * r * 1.1, ((j * 29) % 60) - 20, ((j * 41) % 90) - 45);
-      puff.scale.y = 0.6;
+      puff.scale.set(r * 2.4, r * 1.2, 1);
       cluster.add(puff);
     }
     const x = -5600 + ((i * 911) % 11200);
@@ -136,26 +156,33 @@ export function buildClouds(scene) {
   // corridor and a towering bank on the western horizon around the sun,
   // so a westbound cover frame has layered clouds instead of empty sky.
   const heroSpots = [
-    { x: -2500, y: 700, z: -800, r: 300, n: 7 },
-    { x: -800, y: 850, z: 600, r: 260, n: 6 },
-    { x: 800, y: 750, z: -400, r: 280, n: 6 },
-    { x: 1400, y: 700, z: 2200, r: 320, n: 7 },
-    { x: 3500, y: 900, z: -1000, r: 260, n: 5 },
-    { x: 500, y: 1100, z: 1800, r: 300, n: 6 },
-    { x: -5200, y: 900, z: 2800, r: 380, n: 8 },
-    { x: -4800, y: 1250, z: 3600, r: 340, n: 7 },
-    { x: -5600, y: 700, z: 1800, r: 360, n: 8 },
+    { x: -2500, y: 620, z: -800, r: 240, n: 9 },
+    { x: -800, y: 620, z: 600, r: 220, n: 9 },
+    { x: 800, y: 600, z: -400, r: 230, n: 9 },
+    { x: 1400, y: 550, z: 2200, r: 260, n: 10 },
+    { x: 3500, y: 800, z: -1000, r: 220, n: 7 },
+    { x: 500, y: 800, z: 1800, r: 240, n: 8 },
+    { x: -5200, y: 800, z: 2800, r: 320, n: 10 },
+    { x: -4800, y: 1000, z: 3600, r: 280, n: 8 },
+    { x: -5600, y: 650, z: 1800, r: 300, n: 10 },
+    { x: -3200, y: 450, z: 2600, r: 260, n: 9 },
+    { x: -1800, y: 380, z: 3300, r: 240, n: 9 },
+    { x: -6500, y: 1100, z: 800, r: 300, n: 9 },
   ];
-  const warmMat = new THREE.MeshLambertMaterial({ color: 0xffe6c0, transparent: true, opacity: 0.88, emissive: 0x8a5426, emissiveIntensity: 0.35 });
-  const shadeMat = new THREE.MeshLambertMaterial({ color: 0xc4b2a4, transparent: true, opacity: 0.85, emissive: 0x4a3a34, emissiveIntensity: 0.3 });
+  // hero puffs: warm-lit sprites, every third one a cooler shade tint
+  // so the bank has depth instead of one flat colour.
   for (let i = 0; i < heroSpots.length; i++) {
     const sp = heroSpots[i];
     const cluster = new THREE.Group();
     for (let j = 0; j < sp.n; j++) {
-      const r = sp.r * (0.55 + ((i * 31 + j * 47) % 50) / 100);
-      const puff = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 8), j % 3 === 2 ? shadeMat : warmMat);
-      puff.position.set((j - sp.n / 2) * r * 0.9, ((j * 37) % 90) - 30, ((j * 53) % 120) - 60);
-      puff.scale.y = 0.55;
+      const r = sp.r * (0.42 + ((i * 31 + j * 47) % 45) / 100);
+      const puff = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: cloudTex, color: j % 3 === 2 ? 0xc4b2a4 : 0xffe6c0,
+        transparent: true, opacity: 0.8, depthWrite: false,
+      }));
+      puff.material.rotation = (i * 0.9 + j * 0.6) % Math.PI;
+      puff.position.set((j - sp.n / 2) * r * 1.15, ((j * 37) % 70) - 25, ((j * 53) % 120) - 60);
+      puff.scale.set(r * 2.4, r * 1.15, 1);
       cluster.add(puff);
     }
     cluster.position.set(sp.x, sp.y, sp.z);
